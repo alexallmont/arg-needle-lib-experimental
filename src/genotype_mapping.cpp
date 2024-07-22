@@ -44,11 +44,13 @@ std::vector<std::tuple<ARGEdge*, arg_real_t>> map_genotype_to_ARG_internal(
 
   ARGEdge* edge;
   DescendantList current_carriers(num_leaves);
+  std::cout << "total carriers " << carriers.num_values() << std::endl;
   while (carriers.num_values() > 0) {
     const int leaf_id = carriers.peek();
     std::tie(edge, current_carriers) = arg_utils::highest_carrier_edge(arg, leaf_id, carriers, pos);
     mutations_to_add.emplace_back(edge, pos);
     carriers.erase(current_carriers);
+    std::cout << "remaining carriers " << carriers.num_values() << std::endl;
   }
 
   return mutations_to_add;
@@ -129,9 +131,11 @@ void arg_utils::map_genotypes_to_ARG(
 
   for (const auto& result : all_results) {
     for (const auto& [edge, pos] : result) {
-      arg.add_mutation(edge, pos);
+      // do not update mutation metadata here
+      arg.add_mutation(edge, pos, -1.0, -1, false);
     }
   }
+  arg.update_site_data_structures();
 }
 
 std::tuple<std::vector<ARGEdge*>, double> arg_utils::map_genotype_to_ARG_approximate(

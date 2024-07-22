@@ -41,6 +41,13 @@
 #include <unordered_set>
 #include <vector>
 
+struct FastMultiplicationData {
+  Eigen::VectorXd allele_frequencies;
+  std::vector<int> topo_order;
+  std::map<arg_real_t, int> pos_to_mut_id;
+  std::unordered_map<int, std::set<arg_real_t>> node_id_to_split_points;
+};
+
 class ARG
 {
 private:
@@ -106,6 +113,10 @@ public:
     std::unordered_map<int, std::string> sample_names;
     std::unordered_set<int> leaf_ids;
     std::map<arg_real_t, std::unique_ptr<Root>> roots;
+
+    // metadata required for fast multiplication
+    FastMultiplicationData fast_multiplication_data;
+
 
     int num_edges_cnt = 0; // number of edges in the ARG
 

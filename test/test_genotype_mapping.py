@@ -144,6 +144,24 @@ def test_map_genotypes_big():
     # Can test for accuracy once we have merged PR #137
     assert len(arg.mutations()) == len(G)
 
+def test_map_genotypes_big_async():
+    """Test that input genotypes are correctly converted to mutations on edges"""
+    seed = 130222
+    ts = msprime.simulate(
+        sample_size=4000, Ne=2e4, length=1e5, recombination_rate=2e-8,
+        mutation_rate=2e-8, random_seed=seed)
+    ts2 = msprime.simulate(
+        sample_size=4000, Ne=2e4, length=1e5, recombination_rate=2e-8,
+        mutation_rate=2e-8, random_seed=seed+1)
+    G = ts.genotype_matrix()
+    sites = [s.position for s in ts.sites()]
+
+    arg = arg_needle_lib.tskit_to_arg(ts2)
+    arg.populate_children_and_roots()
+
+    arg_needle_lib.map_genotypes_to_ARG(arg, G, sites)
+
+
 
 def test_map_diploid_genotypes_small():
     """Test that input genotypes are correctly converted to mutations on edges"""

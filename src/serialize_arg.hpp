@@ -44,6 +44,18 @@ bool validate_serialized_arg(const std::string& file_name);
 
 
 ARG deserialize_arg(const std::string& file_name, int chunk_size = 1000, int reserved_samples = -1);
+
+
+struct ARG_data {
+    std::vector<arg_real_t> node_heights;
+    std::deque<bool> is_sample_deque;
+    std::vector<std::pair<int, int>> edge_ids_paired;
+    std::vector<std::pair<arg_real_t, arg_real_t>> edge_ranges_paired;
+};
+ARG_data truncate_arg_data(ARG_data& arg_data, const arg_real_t truncation_height = std::numeric_limits<arg_real_t>::max(), bool split_root = false);
+
+ARG deserialize_arg_cpp(const std::string& file_name, const arg_real_t trim_start = 0., const arg_real_t trim_end = std::numeric_limits<arg_real_t>::max(), const arg_real_t truncation_height = std::numeric_limits<arg_real_t>::max());
+
 } // namespace arg_utils
 
 #endif // ARG_NEEDLE_LIB_SERIALIZE_ARG_H

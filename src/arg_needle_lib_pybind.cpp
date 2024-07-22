@@ -26,6 +26,7 @@
 #include "genotype_mapping.hpp"
 #include "mutation.hpp"
 #include "root.hpp"
+#include "serialize_arg.hpp"
 #include "site.hpp"
 #include "types.hpp"
 
@@ -493,4 +494,24 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
           },
           py::return_value_policy::reference, py::arg("arg"), py::arg("descendants"), py::arg("position"),
           "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");
+          
+    m.def("prepare_fast_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"));
+    m.def("ARG_by_matrix_multiply_muts_fast", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
+        py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+        py::arg("start_pos") = 0, py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+        "Multiply each existing ARG mutation by a sample-by-k matrix");
+    m.def("ARG_by_matrix_multiply_muts_fast_mt", &arg_utils::ARG_matrix_multiply_existing_mut_fast_mt, py::arg("arg"),
+        py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+        py::arg("n_threads") = 1, "Multiply each existing ARG mutation by a sample-by-k matrix with multi-threading");
+    m.def("ARG_by_matrix_multiply_samples_faster", &arg_utils::ARG_matrix_multiply_samples_faster, py::arg("arg"),
+        py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true,
+        py::arg("start_pos") = 0., py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+        "Multiply each sample by a mutations-by-k matrix");
+    m.def("ARG_by_matrix_multiply_samples_faster_mt", &arg_utils::ARG_matrix_multiply_samples_faster_mt, py::arg("arg"),
+        py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+        py::arg("n_threads") = 1, "Multiply each sample by a mutations-by-k matrix with multi-threading");
+    m.def("deserialize_arg_cpp", &arg_utils::deserialize_arg_cpp, py::arg("file_name"), py::arg("trim_start") = 0.,
+        py::arg("trim_end") = std::numeric_limits<arg_real_t>::max(),
+        py::arg("truncation_height") = std::numeric_limits<arg_real_t>::max(),
+        "deserialize an arg and either trim or truncate at the same time");
 }
