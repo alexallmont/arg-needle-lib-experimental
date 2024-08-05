@@ -116,6 +116,7 @@ public:
 
     // metadata required for fast multiplication
     FastMultiplicationData fast_multiplication_data;
+    void keep_mutations_within_maf(arg_real_t min_maf = 0., arg_real_t max_maf = 1., bool verbose = true);
 
 
     int num_edges_cnt = 0; // number of edges in the ARG

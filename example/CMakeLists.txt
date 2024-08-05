@@ -33,3 +33,6 @@ target_link_libraries(example_matmult PRIVATE arg_needle_lib)
 
 add_executable(example_map example_map_genotypes.cpp)
 target_link_libraries(example_map PRIVATE arg_needle_lib)
+
+add_executable(example_arg_grm example_arg_grm_mult.cpp)
+target_link_libraries(example_arg_grm PRIVATE arg_needle_lib)

@@ -190,6 +190,8 @@ ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eigen::MatrixXd& in_
 Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast_mt(const ARG& arg, const Eigen::MatrixXd& in_mat,
     bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true, int n_threads = 1);
 
+Eigen::MatrixXd ARG_grm_matmul(const ARG& arg, const Eigen::MatrixXd& in_mat, bool diploid = true);
+
 } // namespace arg_utils
 
 #endif // ARG_NEEDLE_LIB_ARG_UTILS_HPP

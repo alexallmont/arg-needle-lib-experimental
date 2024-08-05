@@ -242,7 +242,9 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
       .def("get_idx_of_mutation_closest_to", &ARG::get_idx_of_mutation_closest_to,
            py::arg("physical_pos"))
       .def("clear_mutations", &ARG::clear_mutations)
-      .def("clear_mutations_from_edges", &ARG::clear_mutations_from_edges);
+      .def("clear_mutations_from_edges", &ARG::clear_mutations_from_edges)
+      .def("keep_mutations_within_maf", &ARG::keep_mutations_within_maf, py::arg("min_maf") = 0.,
+           py::arg("max_maf") = 1., py::arg("verbose") = true);
 
   py::class_<DescendantList>(m, "DescendantList")
       .def_static(
@@ -514,4 +516,5 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
         py::arg("trim_end") = std::numeric_limits<arg_real_t>::max(),
         py::arg("truncation_height") = std::numeric_limits<arg_real_t>::max(),
         "deserialize an arg and either trim or truncate at the same time");
+    m.def("ARG_grm_matmul", &arg_utils::ARG_grm_matmul, py::arg("arg"), py::arg("input_mat"), py::arg("diploid"));
 }

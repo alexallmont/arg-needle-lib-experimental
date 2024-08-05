@@ -4404,10 +4404,10 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eige
 
   // need to figure out how many mutations are in range and how to offset the allele count lookup
   int num_mut_in_range = 0;
-  int allele_freq_lookup_offset = 0;
+  int site_lookup_offset = 0;
   
   for (const auto& site_pos : arg.get_site_positions()) {
-    if (site_pos < start_pos) allele_freq_lookup_offset++;
+    if (site_pos < start_pos) site_lookup_offset++;
     if (site_pos >= start_pos && site_pos < end_pos) num_mut_in_range++;
   }
 
@@ -4493,7 +4493,7 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eige
     if (!standardize_mut) {
       Eigen::VectorXd node_result = node_result_map.at(mutation->edge->child->ID).first;
       int external_mut_id = arg.fast_multiplication_data.pos_to_mut_id.at(position);
-      result.col(external_mut_id) += node_result;
+      result.col(external_mut_id - site_lookup_offset) += node_result;
     }
     else {
       Eigen::VectorXd node_result = node_result_map.at(mutation->edge->child->ID).first;
@@ -4504,14 +4504,17 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eige
       // Eigen::VectorXd offset = 2 * mean * mat_row_sum;
       // node_result = node_result - offset;
       node_result *= std::pow(std, alpha);
-      result.col(external_mut_id) += node_result;
+      result.col(external_mut_id - site_lookup_offset) += node_result;
     }
     mut_index++;
   }
-  Eigen::ArrayXd means =
-      arg.fast_multiplication_data.allele_frequencies.segment(allele_freq_lookup_offset, num_mut_in_range).array() / n;
-  Eigen::ArrayXd stds = (2 * means.array() * (1 - means.array())).sqrt().pow(alpha);
-  result -= 2 * mat_row_sum * ((means * stds).matrix().transpose());
+  if (standardize_mut)
+  {
+    Eigen::ArrayXd means =
+        arg.fast_multiplication_data.allele_frequencies.segment(site_lookup_offset, num_mut_in_range).array() / n;
+    Eigen::ArrayXd stds = (2 * means.array() * (1 - means.array())).sqrt().pow(alpha);
+    result -= 2 * mat_row_sum * ((means * stds).matrix().transpose());
+  }
   return result;
 }
 
@@ -4547,6 +4550,112 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast_mt(const ARG& arg, const E
     col_offset += n_muts;
   }
   return final_out;
+}
+
+Eigen::MatrixXd ARG_grm_matmul(const ARG& arg, const Eigen::MatrixXd& input_mat, bool diploid) {
+
+  std::map< std::pair<int, arg_real_t>, Eigen::VectorXd> split_node_results; 
+
+  // filling in place holder data
+  for (auto entry : arg.fast_multiplication_data.node_id_to_split_points) {
+    for (auto pos : entry.second) {
+      int node_to_insert = entry.first;
+      split_node_results[std::make_pair(node_to_insert, pos)] = Eigen::VectorXd::Zero(input_mat.cols());
+    }
+  }
+
+  // initialize the leaves
+  for (auto leaf_id : arg.leaf_ids) {
+    split_node_results[std::make_pair(leaf_id, 0.)] = input_mat.row(diploid ? leaf_id/2 : leaf_id);
+    // split_node_results[std::make_pair(leaf_id, arg.end)] = input_mat.row(leaf_id);
+  }
+
+  // first travel upwards from leaves to root
+  for (auto it = arg.fast_multiplication_data.topo_order.rbegin(); it != arg.fast_multiplication_data.topo_order.rend(); it++) {
+    auto node_id = *it;
+    auto& node_parents = arg.arg_nodes.at(node_id)->parents;
+    for (auto& parent_entry : node_parents) {
+      auto parent_id = parent_entry.second.get()->parent->ID;
+      auto edge_start = parent_entry.second.get()->start;
+      auto edge_end = parent_entry.second.get()->end;
+
+      // find the relevant split pos that spans the edge range
+      auto &splits = arg.fast_multiplication_data.node_id_to_split_points.at(node_id);
+      auto first_split = splits.upper_bound(edge_start);
+      // again go back by one to find a starting split no later than supplied start_pos.
+      first_split--;
+      auto last_split = splits.lower_bound(edge_end);
+      for (auto split_it = first_split; split_it != last_split; split_it++)
+      {
+        auto interval_left = *split_it;
+        split_it++;
+        auto interval_right = *split_it;
+        split_it--;
+
+        // now update parent split results
+        auto &parent_splits = arg.fast_multiplication_data.node_id_to_split_points.at(parent_id);
+        auto first_parent_split = parent_splits.lower_bound(std::max(edge_start, interval_left));
+        // no need to shift since children splits are always parent splits
+        // assert(*first_parent_split == edge_start);
+        auto last_parent_split = parent_splits.lower_bound(std::min(edge_end, interval_right));
+        // if (last_parent_split == parent_splits.end()) last_parent_split--;
+        assert(last_parent_split != parent_splits.end());
+        for (auto it = first_parent_split; it != last_parent_split; it++) {
+          split_node_results.at(std::make_pair(parent_id, *it)) += split_node_results.at(std::make_pair(node_id, interval_left));
+          assert(interval_left <= *it);
+        }
+      }
+    }
+  }
+
+  // now going back down
+
+  for (auto it = arg.fast_multiplication_data.topo_order.begin(); it != arg.fast_multiplication_data.topo_order.end(); it++) {
+    auto node_id = *it;
+    auto& node_parents = arg.arg_nodes.at(node_id)->parents;
+
+    auto split_it_start = arg.fast_multiplication_data.node_id_to_split_points.at(node_id).begin();
+    auto split_it_end = arg.fast_multiplication_data.node_id_to_split_points.at(node_id).end();
+    split_it_end--;
+
+    for (auto split_it = split_it_start; split_it != split_it_end; split_it++) {
+      auto split_pos = *split_it;
+      split_it++;
+      auto next_split_pos = *split_it;
+      split_it--;
+      auto& node_parents = arg.arg_nodes.at(node_id)->parents;
+      Eigen::VectorXd current_cum_vector = Eigen::VectorXd::Zero(input_mat.cols());
+      arg_real_t current_cum_vol = 0.;
+
+      auto parent_edge_it_start = node_parents.upper_bound(split_pos);
+      if (parent_edge_it_start != node_parents.begin()) parent_edge_it_start--;
+      auto parent_edge_it_end = node_parents.lower_bound(next_split_pos);
+      for (auto parent_edge_it = parent_edge_it_start; parent_edge_it!=parent_edge_it_end; parent_edge_it++) {
+        auto edge_start = parent_edge_it->second->start;
+        auto edge_end = parent_edge_it->second->end;
+        if (edge_end <= split_pos) continue;
+        auto parent_id = parent_edge_it->second->parent->ID;
+        auto parent_split_lookup_start = std::max(edge_start, split_pos);
+        auto parent_split_lookup_end = std::min(edge_end, next_split_pos);
+
+        current_cum_vol += (parent_edge_it->second->parent->height - parent_edge_it->second->child->height)*(parent_split_lookup_end - parent_split_lookup_start);
+        
+        for (auto it = arg.fast_multiplication_data.node_id_to_split_points.at(parent_id).lower_bound(parent_split_lookup_start); it != arg.fast_multiplication_data.node_id_to_split_points.at(parent_id).lower_bound(parent_split_lookup_end); it++) {
+          current_cum_vector += split_node_results.at(std::make_pair(parent_id, *it));
+        }
+      }
+      split_node_results.at(std::make_pair(node_id, split_pos)) *= current_cum_vol;
+      split_node_results.at(std::make_pair(node_id, split_pos)) += current_cum_vector;
+    }
+  }
+
+  Eigen::MatrixXd final_result = Eigen::MatrixXd::Zero(diploid ? arg.leaf_ids.size()/2 : arg.leaf_ids.size(), input_mat.cols());
+
+  for (auto leaf_id : arg.leaf_ids) {
+    assert(*arg.fast_multiplication_data.node_id_to_split_points.at(leaf_id).begin() == 0.);
+    final_result.row(diploid ? leaf_id/2 : leaf_id) += split_node_results.at(std::make_pair(leaf_id, 0));
+  }
+  return final_result;
 }
 
 } // namespace arg_utils
