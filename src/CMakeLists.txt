@@ -29,6 +29,7 @@ find_package(HDF5 COMPONENTS CXX REQUIRED)
 
 set(
         arg_needle_lib_src
+        alstructure.cpp
         ancestor_entry.cpp
         arg.cpp
         arg_edge.cpp
@@ -48,6 +49,7 @@ set(
 
 set(
         arg_needle_lib_hdr
+        alstructure.hpp
         ancestor_entry.hpp
         arg.hpp
         arg_edge.hpp
@@ -80,7 +82,7 @@ set_target_properties(arg_needle_lib PROPERTIES PUBLIC_HEADER "${arg_needle_lib_
 
 
 target_link_libraries(arg_needle_lib PRIVATE Boost::headers Boost::iostreams Threads::Threads HDF5::HDF5)
-target_link_libraries(arg_needle_lib PUBLIC Eigen3::Eigen)
+target_link_libraries(arg_needle_lib PUBLIC Spectra Eigen3::Eigen)
 
 # Turning off warnings for now
 # target_link_libraries(arg_needle_lib PRIVATE project_warnings)

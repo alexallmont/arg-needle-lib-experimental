@@ -29,6 +29,7 @@
 #include "serialize_arg.hpp"
 #include "site.hpp"
 #include "types.hpp"
+#include "alstructure.hpp"
 
 #include <pybind11/eigen.h>
 #include <pybind11/iostream.h>
@@ -250,6 +251,26 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
       .def_static(
           "set_threshold", &DescendantList::set_threshold, "Set threshold", py::arg("threshold"))
       .def_static("print_threshold", &DescendantList::print_threshold, "Print threshold");
+
+
+  py::class_<ALSoptions>(m, "ALSoptions")
+      .def(py::init<>(), "Constructor for ALSoptions")
+      .def_readwrite("max_iter", &ALSoptions::max_iterations, "Maximum number of iterations")
+      .def_readwrite("debug", &ALSoptions::debugmode, "Debug flag")
+      .def_readwrite("tol", &ALSoptions::convergence_limit, "Convergence limit")
+      .def_readwrite("random_state", &ALSoptions::seed, "Random seed to initialise P")
+      .def_readwrite("write_to_file", &ALSoptions::write_to_file, "Flag for writing file to disk")
+      .def_readwrite("output_path", &ALSoptions::OUTPUT_PATH, "Output path for matrices")
+      .def_readwrite("n_components", &ALSoptions::num_of_evec, "Number of components")
+      .def_readwrite("n_threads", &ALSoptions::n_threads, "Number of compute threads");
+  py::class_<ALStructure>(m, "ALStructure")
+      .def(py::init<std::vector<ARG*>, ALSoptions>(), "Load ARGs to perform ALStructure type decomposition", py::arg("ARG_list"), py::arg("options") = ALSoptions())
+      .def_readwrite("options", &ALStructure::opts, "Options for ALStructure algorithm")
+      .def_readwrite("D", &ALStructure::D, "Vector for diagonal D in LSE")
+      .def_readwrite("als_V", &ALStructure::V, "V matrix in truncated ALStructure")
+      .def_readwrite("Phat", &ALStructure::Phat, "P matrix estimated by ALStructure")
+      .def_readwrite("Qhat", &ALStructure::Qhat, "Q matrix estimated by ALStructure")
+      .def("fit_ALS", &ALStructure::fit_ALS, "Fit ALStructure model", py::call_guard<py::scoped_ostream_redirect, py::scoped_estream_redirect>());
 
   // arg_utils: general ARG querying
   m.def("arg_to_newick", &arg_utils::arg_to_newick, py::arg("arg"), py::arg("verbose") = false,

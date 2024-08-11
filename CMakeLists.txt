@@ -62,6 +62,7 @@ endif ()
 
 add_subdirectory(src)
 add_subdirectory(example)
+add_subdirectory(3rd_party/spectra)
 
 option(ENABLE_TESTING "Enable Test Builds" ON)
 if (ENABLE_TESTING)
