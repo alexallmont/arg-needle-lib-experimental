@@ -4909,4 +4909,120 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
   return std::make_tuple(std::move(beta), std::move(se), std::move(ac));
 }
 
+
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutation_fast_hwe(const ARG& arg, const Eigen::MatrixXd& in_mat) {
+  if (arg.leaf_ids.size()/2 != in_mat.rows()) {
+    cout << "Samples are " << arg.leaf_ids.size() /2 << " but phenotype row size is " << in_mat.rows() << endl;
+    throw std::runtime_error(THROW_LINE("Mismatching sample and phenotype sizes"));
+  }
+
+  if (arg.roots.empty()) {
+    throw std::logic_error(THROW_LINE("Call populate_children_and_roots() first."));
+  }
+  if (arg.get_mutations().empty()) {
+    std::cout << "No mutations found; did you forget to call generate_mutations_and_keep?" << std::endl;
+  }
+
+  Eigen::MatrixXd beta = Eigen::MatrixXd::Zero(arg.num_mutations(), in_mat.cols());
+  Eigen::MatrixXd se = Eigen::MatrixXd::Zero(arg.num_mutations(), in_mat.cols());
+  Eigen::VectorXi ac = Eigen::VectorXi::Zero(arg.num_mutations());
+
+  Eigen::VectorXd pheno_mean = in_mat.colwise().mean();
+  Eigen::VectorXd pheno_ss = in_mat.colwise().squaredNorm() - ((double) in_mat.rows()) * (pheno_mean.cwiseAbs2()).transpose();
+
+  // the tuple we keep accumulating towards the mutation is made up of
+  // 1. the partial product with phenotype
+  // 2. bitset recording hetero carriers
+  // 3. total carrier count used for centering the genotype
+
+  // unordered_map<int, pair<tuple<Eigen::VectorXd, boost::dynamic_bitset<>, int>, arg_real_t>> node_result_map;
+  unordered_map<int, pair<pair<Eigen::VectorXd, int>, arg_real_t>> node_result_map;
+  priority_queue<pair<arg_real_t, int>, vector<pair<arg_real_t, int>>,
+                 std::greater<pair<arg_real_t, int>>>
+      expiration_pq;
+  stack<const ARGNode *> to_process;
+  stack<const ARGNode *> postorder;
+
+  for (int i : arg.leaf_ids) {
+    Eigen::VectorXd leaf_result = in_mat.row(i / 2) - pheno_mean.transpose();
+
+    node_result_map.insert({i, std::make_pair(std::make_pair(leaf_result, 1), arg.end)});
+    expiration_pq.push(std::make_pair(arg.end, i));
+  }
+
+  int n_muts_included = arg.num_mutations();
+  int mut_index = 0;
+  Eigen::VectorXd hetero_count = Eigen::VectorXd::Zero(n_muts_included);
+  
+  for (const std::unique_ptr<Mutation> &mutation_unique_ptr :
+       arg.get_mutations()) {
+    const Mutation *mutation = mutation_unique_ptr.get();
+    arg_real_t position = mutation->position;
+
+    while (!expiration_pq.empty() && expiration_pq.top().first <= position) {
+      node_result_map.erase(node_result_map.find(expiration_pq.top().second));
+      expiration_pq.pop();
+    }
+    if (node_result_map.find(mutation->edge->child->ID) ==
+        node_result_map.end()) {
+      to_process.push(mutation->edge->child);
+    }
+    while (!to_process.empty()) {
+      const ARGNode *node = to_process.top();
+      to_process.pop();
+      postorder.push(node);
+
+      for (const ARGEdge *child_edge : node->children_at(position)) {
+        const ARGNode *child_node = child_edge->child;
+        if (node_result_map.find(child_node->ID) == node_result_map.end()) {
+          to_process.push(child_node);
+        }
+      }
+    }
+    arg_real_t expire_position;
+    while (!postorder.empty()) {
+      const ARGNode *node = postorder.top();
+      postorder.pop();
+      expire_position = node->end;
+      vector<ARGEdge *> child_edges = node->children_at(position);
+      for (const ARGEdge *child_edge : child_edges) {
+        const ARGNode *child_node = child_edge->child;
+        arg_real_t child_descendants_expire =
+            node_result_map.at(child_node->ID).second;
+        expire_position = std::min(expire_position, child_descendants_expire);
+        expire_position = std::min(expire_position, child_edge->end);
+      }
+      vector<ARGEdge *> child_edges_stretch =
+          node->children_overlap(position, expire_position);
+      for (const ARGEdge *child_edge_stretch : child_edges_stretch) {
+        if (child_edge_stretch->start > position) {
+          expire_position =
+              std::min(expire_position, child_edge_stretch->start);
+        }
+      }
+      Eigen::VectorXd node_result = Eigen::VectorXd::Zero(in_mat.cols());
+      // boost::dynamic_bitset<> node_het_carrier(arg.leaf_ids.size()/2);
+      int node_desc_count = 0;
+      for (const ARGEdge *child_edge : child_edges) {
+        const ARGNode *child_node = child_edge->child;
+        node_result += node_result_map.at(child_node->ID).first.first;
+        node_desc_count += node_result_map.at(child_node->ID).first.second;
+      }
+      node_result_map.insert(
+          {node->ID, std::make_pair(std::make_pair(node_result, node_desc_count), expire_position)});
+      expiration_pq.push(std::make_pair(expire_position, node->ID));
+    }
+    ac[mut_index] += node_result_map.at(mutation->edge->child->ID).first.second;
+    // int total_het = std::get<1>(node_result_map.at(mutation->edge->child->ID).first).count();
+    arg_real_t xtx = ac[mut_index] + 1.0*((ac[mut_index])*(ac[mut_index])) / arg.leaf_ids.size();
+    beta.row(mut_index) += std::get<0>(node_result_map.at(mutation->edge->child->ID).first) / xtx;
+    Eigen::VectorXd numerator = pheno_ss - std::get<0>(node_result_map.at(mutation->edge->child->ID).first).cwiseAbs2() / xtx;
+    se.row(mut_index) = (numerator / (arg.leaf_ids.size()/2 - 2) / xtx).cwiseSqrt();
+    mut_index++;
+  }
+  node_result_map.clear();
+
+  return std::make_tuple(std::move(beta), std::move(se), std::move(ac));
+}
+
 } // namespace arg_utils
