@@ -64,11 +64,11 @@ int main(int argc, char* argv[]) {
   // // }
 
   // ARG arg = arg_utils::arg_from_ts_files(directory + "nodes.txt", directory + "edges.txt");
-  ARG arg = arg_utils::deserialize_arg_cpp("/gpfs3/well/palamara/users/ray826/arg_needle_lib_dev/test.argn");
+  ARG arg = arg_utils::deserialize_arg_cpp("/gpfs3/well/palamara/users/ray826/arg_needle_lib_dev/test_n1e5.argn");
   arg.populate_children_and_roots();
   arg.check_basic(false);
   cout << arg.arg_nodes.size() << " nodes, " << arg.get_breakpoints().size() << " trees" << endl;
-  cout << arg.arg_nodes.size() << " nodes, " << arg.num_edges() << " edges" << endl;
+  cout << arg.leaf_ids.size() << " haploids, " << arg.num_edges() << " edges" << endl;
 
   arg_utils::generate_mutations(arg, 1e-8, 18);
 
@@ -77,11 +77,20 @@ int main(int argc, char* argv[]) {
 
   arg_utils::prepare_fast_multiplication(arg);
 
-  Eigen::MatrixXd random_input = Eigen::MatrixXd::Random(arg.num_mutations(), 500);
-  Eigen::MatrixXd random_input2 = Eigen::MatrixXd::Random(500, arg.leaf_ids.size()/2);
+  // auto ss = arg_utils::hom_het_carrier_counts(arg);
 
-  auto result = arg_utils::ARG_matrix_multiply_samples_faster(arg, random_input, true, -1);
-  auto result2 = arg_utils::ARG_matrix_multiply_existing_mut_fast(arg, random_input2, true, -1);
+  // auto geno = arg_utils::get_mutations_matrix(arg);
+
+  // auto genoss = geno.rowwise().squaredNorm();
+
+  // cout << ss << endl;
+  // cout << genoss << endl;
+
+  // Eigen::MatrixXd random_input = Eigen::MatrixXd::Random(arg.num_mutations(), 500);
+  // Eigen::MatrixXd random_input2 = Eigen::MatrixXd::Random(500, arg.leaf_ids.size()/2);
+
+  // auto result = arg_utils::ARG_matrix_multiply_samples_faster(arg, random_input, true, -1);
+  // auto result2 = arg_utils::ARG_matrix_multiply_existing_mut_fast(arg, random_input2, true, -1);
 
   // auto geno = arg_utils::get_mutations_matrix(arg);
 

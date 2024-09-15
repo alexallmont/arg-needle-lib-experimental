@@ -83,6 +83,7 @@ set_target_properties(arg_needle_lib PROPERTIES PUBLIC_HEADER "${arg_needle_lib_
 
 target_link_libraries(arg_needle_lib PRIVATE Boost::headers Boost::iostreams Threads::Threads HDF5::HDF5)
 target_link_libraries(arg_needle_lib PUBLIC Spectra Eigen3::Eigen)
+target_link_libraries(arg_needle_lib PUBLIC roaring)
 
 # Turning off warnings for now
 # target_link_libraries(arg_needle_lib PRIVATE project_warnings)

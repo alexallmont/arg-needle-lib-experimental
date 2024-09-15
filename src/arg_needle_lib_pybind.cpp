@@ -162,6 +162,10 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
       .def_readonly("offset", &ARG::offset)                     // set using set_offset
       .def_readonly("chromosome", &ARG::chromosome)             // set using set_chromosome
       .def_readonly("reserved_samples", &ARG::reserved_samples) // set using constructors
+      .def("allele_freq", [](const ARG& arg) {
+            return arg.fast_multiplication_data.allele_frequencies;
+          },
+          py::return_value_policy::reference, "Get propagated allele frequencies")
       .def(
           "node",
           [](const ARG& arg, int ID) {
@@ -538,4 +542,6 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
         py::arg("truncation_height") = std::numeric_limits<arg_real_t>::max(),
         "deserialize an arg and either trim or truncate at the same time");
     m.def("ARG_grm_matmul", &arg_utils::ARG_grm_matmul, py::arg("arg"), py::arg("input_mat"), py::arg("diploid"));
+    m.def("weighted_mut_squared_norm", &arg_utils::weighted_mut_squared_norm, py::arg("arg"), py::arg("weights"), py::arg("centre"));
+    m.def("association_mutation_fast", &arg_utils::association_mutation_fast, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
 }
