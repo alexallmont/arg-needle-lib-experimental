@@ -194,6 +194,7 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast_mt(const ARG& arg, const E
 Eigen::MatrixXd ARG_grm_matmul(const ARG& arg, const Eigen::MatrixXd& in_mat, bool diploid = true);
 Eigen::MatrixXd weighted_mut_squared_norm(const ARG& arg, const Eigen::MatrixXd& weights, bool centre = true);
 std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutation_fast(const ARG& arg, const Eigen::MatrixXd& in_mat);
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutation_fast_hwe(const ARG& arg, const Eigen::MatrixXd& in_mat);
 
 } // namespace arg_utils
 

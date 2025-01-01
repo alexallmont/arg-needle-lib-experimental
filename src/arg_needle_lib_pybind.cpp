@@ -544,4 +544,5 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
     m.def("ARG_grm_matmul", &arg_utils::ARG_grm_matmul, py::arg("arg"), py::arg("input_mat"), py::arg("diploid"));
     m.def("weighted_mut_squared_norm", &arg_utils::weighted_mut_squared_norm, py::arg("arg"), py::arg("weights"), py::arg("centre"));
     m.def("association_mutation_fast", &arg_utils::association_mutation_fast, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
+    m.def("association_mutation_fast_hwe", &arg_utils::association_mutation_fast_hwe, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
 }
