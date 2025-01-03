@@ -42,3 +42,6 @@ target_link_libraries(example_als PRIVATE arg_needle_lib)
 
 add_executable(example_sumstats example_sumstats.cpp)
 target_link_libraries(example_sumstats PRIVATE arg_needle_lib)
+
+add_executable(example_fastmult example_fastmult.cpp)
+target_link_libraries(example_fastmult PRIVATE arg_needle_lib)
