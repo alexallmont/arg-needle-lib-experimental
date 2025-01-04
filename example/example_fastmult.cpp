@@ -30,6 +30,7 @@
 #include "serialize_arg.hpp"
 #include "types.hpp"
 #include "utils.hpp"
+#include "arg_mult.hpp"
 
 #include <boost/functional/hash.hpp>
 #include <boost/timer/progress_display.hpp>
@@ -62,9 +63,9 @@ int main(int argc, char* argv[])
   boost::timer::progress_display pbar(arg.num_mutations());
 
   std::unordered_map<int, std::set<int>> mut_topo;
-  std::unordered_map<std::pair<int, double>, std::set<int>, boost::hash<std::pair<int, double>>> node_split_pos_to_muts;
-  std::map<int, std::map<double, set<int>>> node_to_split_to_mut_set_id;
-  std::map<int, set<int>> mut_set_id_to_muts;
+  // std::unordered_map<std::pair<int, double>, std::set<int>, boost::hash<std::pair<int, double>>> node_split_pos_to_muts;
+  std::unordered_map<int, std::map<double, set<int>>> node_to_split_to_mut_set_id;
+  std::unordered_map<int, set<int>> mut_set_id_to_muts;
 
   for (auto node_it = arg.fast_multiplication_data.topo_order.begin();
        node_it != arg.fast_multiplication_data.topo_order.end(); node_it++) {
@@ -161,20 +162,20 @@ int main(int argc, char* argv[])
   // for (auto& entry : mut_topo) {
   //   auto desc_mut = entry.first;
   //   // auto desc_row = mut_mat.row(desc_mut);
-  //   cout << "checking mut set id " << desc_mut << " including mut id {";
+  //   // cout << "checking mut set id " << desc_mut << " including mut id {";
   //   for (auto m : mut_set_id_to_muts.at(desc_mut)) {
-  //     cout << m << " ";
+  //     // cout << m << " ";
   //     assert(mut_mat.row(m) == mut_mat.row(*mut_set_id_to_muts.at(desc_mut).begin()));
   //   }
-  //   cout << "}\ndescendant to\n";
+  //   // cout << "}\ndescendant to\n";
   //   if (!entry.second.empty()){
   //     for (auto& anc : entry.second) {
-  //       cout << "  mut set id " << anc << " including mut id {" << std::flush;
+  //       // cout << "  mut set id " << anc << " including mut id {" << std::flush;
   //       for (auto m : mut_set_id_to_muts.at(anc)) {
-  //         cout << m << " " << std::flush;
+  //         // cout << m << " " << std::flush;
   //         assert(mut_mat.row(m) == mut_mat.row(*mut_set_id_to_muts.at(anc).begin()));
   //       }
-  //       cout << "}\n";
+  //       // cout << "}\n";
   //       // cout << " " << anc;
   //     }
 
@@ -276,6 +277,32 @@ int main(int argc, char* argv[])
       break;
     }
   }
+
+  ARGMatMult test_geno;
+  test_geno.load_arg(arg);
+  cout << test_geno.mut_set_topo_order_leaf_to_root.size() << endl;
+  Eigen::MatrixXd left_in = Eigen::MatrixXd::Random(20, arg.leaf_ids.size());
+  Eigen::MatrixXd left_out = test_geno.left_mult(left_in, false, 0, false);
+  Eigen::MatrixXd ref_left_out = left_in * mut_mat.cast<double>().transpose();
+
+  cout << (ref_left_out - left_out).cwiseAbs().sum() << endl;
+
+  Eigen::MatrixXd right_in = Eigen::MatrixXd::Random(arg.num_mutations(), 20);
+  Eigen::MatrixXd right_out = test_geno.right_mult(right_in, false, 0, false);
+  Eigen::MatrixXd ref_right_out = mut_mat.cast<double>().transpose() * right_in;
+
+  cout << (ref_right_out - right_out).cwiseAbs().sum() << endl;
+
+  cout << ref_left_out.col(0).transpose() << endl;
+  cout << left_out.col(0).transpose() << endl;
+  // for (int i=0; i != ref_right_out.rows(); i ++) {
+  //   if (ref_right_out.row(i) != right_out.row(i)) {
+  //     cout << i << endl;
+  //     cout << ref_right_out.row(i) << endl;
+  //     cout << right_out.row(i) << endl;
+
+  //   }
+  // }
 
   // for (auto& entry : mut_topo_bottom_up) {
   //   Eigen::RowVectorXi geno = Eigen::VectorXi::Zero(arg.leaf_ids.size());

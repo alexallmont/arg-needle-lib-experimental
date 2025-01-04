@@ -33,6 +33,7 @@ set(
         ancestor_entry.cpp
         arg.cpp
         arg_edge.cpp
+        arg_mult.cpp
         arg_node.cpp
         arg_utils.cpp
         constants.cpp
@@ -53,6 +54,7 @@ set(
         ancestor_entry.hpp
         arg.hpp
         arg_edge.hpp
+        arg_mult.hpp
         arg_node.hpp
         arg_utils.hpp
         constants.hpp
