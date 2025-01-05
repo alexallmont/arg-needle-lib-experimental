@@ -1,5 +1,9 @@
 #include "arg_mult.hpp"
 
+ARGMatMult::ARGMatMult(ARG& arg) {
+  ARGMatMult::load_arg(arg);
+}
+
 void ARGMatMult::load_arg(ARG& arg)
 {
   if (arg.num_mutations() == 0) {
@@ -7,15 +11,15 @@ void ARGMatMult::load_arg(ARG& arg)
   }
   arg_utils::prepare_fast_multiplication(arg);
 
-  std::unordered_map<int, std::map<double, std::set<int>>> node_to_split_to_mut_set_id;
+  boost::unordered_flat_map<int, boost::container::flat_map<double, boost::container::flat_set<int>>> node_to_split_to_mut_set_id;
   node_to_split_to_mut_set_id.reserve(arg.arg_nodes.size());
   // fill the split positions
   for (auto node_it = arg.fast_multiplication_data.topo_order.begin();
        node_it != arg.fast_multiplication_data.topo_order.end(); node_it++) {
     auto& splits = arg.fast_multiplication_data.node_id_to_split_points.at(*node_it);
-    node_to_split_to_mut_set_id.emplace(*node_it, std::map<double, std::set<int>>());
+    node_to_split_to_mut_set_id.emplace(*node_it, boost::container::flat_map<double, boost::container::flat_set<int>>());
     for (auto s : splits) {
-      node_to_split_to_mut_set_id.at(*node_it).emplace(s, std::set<int>());
+      node_to_split_to_mut_set_id.at(*node_it).emplace(s, boost::container::flat_set<int>());
     }
   }
 
@@ -43,7 +47,7 @@ void ARGMatMult::load_arg(ARG& arg)
           auto sum_start = std::max(p_edge->start, current_split);
           auto sum_end = std::min(p_edge->end, next_split);
           // we sum up results for each split by counting contributions from each parent edge
-          std::set<int> current_split_result;
+          boost::container::flat_set<int> current_split_result;
           auto parent_res_st = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_start);
           assert(sum_start == parent_res_st->first);
           auto parent_res_ed = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_end);
@@ -56,14 +60,14 @@ void ARGMatMult::load_arg(ARG& arg)
           if (muts.empty()) {
             node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(current_split_result);
           } else {
-            std::set<int> current_split_muts;
+            boost::container::flat_set<int> current_split_muts;
             for (auto m : muts) {
               current_split_muts.emplace(arg.fast_multiplication_data.pos_to_mut_id.at(m->position));
               ++pbar;
             }
             mut_topo_desc_to_anc.emplace(mut_set_id, current_split_result);
             mut_set_id_to_muts.emplace(mut_set_id, current_split_muts);
-            std::set<int> m_id;
+            boost::container::flat_set<int> m_id;
             m_id.emplace(mut_set_id);
             node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(m_id);
             mut_set_id++;
@@ -75,7 +79,7 @@ void ARGMatMult::load_arg(ARG& arg)
 
   // now fill the topology in reverse order, i.e. from leaf to root
   for (int i = 0; i != mut_set_id; i++)
-    mut_topo_anc_to_desc.emplace(i, std::set<int>());
+    mut_topo_anc_to_desc.emplace(i, boost::container::flat_set<int>());
 
   for (auto& entry : mut_topo_desc_to_anc) {
     for (auto& anc : entry.second) {
@@ -85,7 +89,7 @@ void ARGMatMult::load_arg(ARG& arg)
 
   // also need a topological ordering of these mutation sets
   std::queue<int> topo_to_process; // sets with zero descendant
-  std::unordered_map<int, int> desc_count;
+  boost::unordered_flat_map<int, int> desc_count;
 
   for (auto& mut_set_entry : mut_topo_anc_to_desc) {
     if (!mut_set_entry.second.empty()) {
@@ -110,12 +114,12 @@ void ARGMatMult::load_arg(ARG& arg)
   desc_count.clear();
 
   // finally special treatment for the sample leaves, linking them with their immediate ancestral mutation sets
-  for (auto& leaf_id : arg.leaf_ids) {
-    std::set<int> muts;
+  for (int leaf_id=0; leaf_id != arg.leaf_ids.size(); leaf_id++) {
+    boost::container::flat_set<int> muts;
     for (auto split : arg.fast_multiplication_data.node_id_to_split_points.at(leaf_id)) {
       muts.merge(node_to_split_to_mut_set_id.at(leaf_id).at(split));
     }
-    indiv_to_mut_set_id.emplace(leaf_id, muts);
+    indiv_to_mut_set_id.emplace_back(muts);
   }
 
   // save the count of mutations
@@ -132,6 +136,7 @@ Eigen::MatrixXd ARGMatMult::left_mult(
     const Eigen::MatrixXd& in_mat, bool standardize_mut, arg_real_t alpha, bool diploid)
 {
   Eigen::MatrixXd result = Eigen::MatrixXd::Zero(in_mat.rows(), n_mut_indexed);
+  Eigen::MatrixXd partial_result = Eigen::MatrixXd::Zero(in_mat.rows(), mut_set_id_to_muts.size());
 
   // dimension check
   if (allele_frequencies.size() != n_mut_indexed) {
@@ -152,27 +157,56 @@ Eigen::MatrixXd ARGMatMult::left_mult(
     }
   }
 
+  auto t1 = std::chrono::high_resolution_clock::now();
   // initialise the results starting from the leaves
-  for (auto& entry : indiv_to_mut_set_id) {
-    int indv_id = diploid ? entry.first / 2 : entry.first;
-    auto target_col = in_mat.col(indv_id);
-    for (auto anc_mut_set : entry.second) {
-      for (int mut_id : mut_set_id_to_muts.at(anc_mut_set))
-        result.col(mut_id) += target_col;
+  // for (const auto& entry : indiv_to_mut_set_id) {
+  //   int indv_id = diploid ? entry.first / 2 : entry.first;
+  //   const auto& target_col = in_mat.col(indv_id);
+  //   for (int anc_mut_set : entry.second) {
+  //     // for (int mut_id : mut_set_id_to_muts.at(anc_mut_set))
+  //     partial_result.col(anc_mut_set) += target_col;
+  //   }
+  // }
+  for (int leaf_id=0; leaf_id != indiv_to_mut_set_id.size(); leaf_id++) {
+    int indv_id = diploid ? leaf_id / 2 : leaf_id;
+    const auto& target_col = in_mat.col(indv_id);
+    for (int anc_mut_set : indiv_to_mut_set_id[leaf_id]) {
+      // for (int mut_id : mut_set_id_to_muts.at(anc_mut_set))
+      partial_result.col(anc_mut_set) += target_col;
     }
   }
+  auto t2 = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  std::cout << "init build time " << duration.count() / 1000.0 << " s" << std::endl;
 
+  t1 = std::chrono::high_resolution_clock::now();
   // traverse upwards
   for (auto mut_set_id : mut_set_topo_order_leaf_to_root) {
     Eigen::VectorXd temp_result = Eigen::VectorXd::Zero(in_mat.rows());
     auto desc_mut_sets = mut_topo_anc_to_desc.at(mut_set_id);
     for (auto desc_mut_set_id : desc_mut_sets) {
-      temp_result += result.col(*mut_set_id_to_muts.at(desc_mut_set_id).begin());
+      // temp_result += result.col(*mut_set_id_to_muts.at(desc_mut_set_id).begin());
+      temp_result += partial_result.col(desc_mut_set_id);
     }
-    for (auto mut_id : mut_set_id_to_muts.at(mut_set_id)) {
-      result.col(mut_id) += temp_result;
+    // for (auto mut_id : mut_set_id_to_muts.at(mut_set_id)) {
+    //   result.col(mut_id) += temp_result;
+    // }
+    partial_result.col(mut_set_id) += temp_result;
+  }
+  t2 = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  std::cout << "traverse time " << duration.count() / 1000.0 << " s" << std::endl;
+
+  t1 = std::chrono::high_resolution_clock::now();
+  for (auto& entry : mut_set_id_to_muts) {
+    auto res = partial_result.col(entry.first);
+    for (int m_id : entry.second) {
+      result.col(m_id) = res;
     }
   }
+  t2 = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  std::cout << "assign time " << duration.count() / 1000.0 << " s" << std::endl;
 
   // postprocessing and deal with normalisation
   if (standardize_mut) {
@@ -211,9 +245,9 @@ Eigen::MatrixXd ARGMatMult::right_mult(
         THROW_LINE("Standardized haploid genotype is not yet implemented..."));
   }
 
-  Eigen::MatrixXd result = Eigen::MatrixXd::Zero(diploid ? n_leaves/2 : n_leaves, in_mat.cols());
-  Eigen::MatrixXd input_copy = in_mat;
-  Eigen::MatrixXd partial_results = Eigen::MatrixXd::Zero(mut_set_id_to_muts.size(), in_mat.cols());
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> result = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Zero(diploid ? n_leaves/2 : n_leaves, in_mat.cols());
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> input_copy = in_mat;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> partial_results = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Zero(mut_set_id_to_muts.size(), in_mat.cols());
 
   if (standardize_mut) {
     Eigen::VectorXd mat_row_sum = in_mat.rowwise().sum();
@@ -223,6 +257,7 @@ Eigen::MatrixXd ARGMatMult::right_mult(
 
   }
 
+  auto t1 = std::chrono::high_resolution_clock::now();
   // traverse downwards
   for (auto mut_set_id = mut_set_topo_order_leaf_to_root.rbegin(); mut_set_id != mut_set_topo_order_leaf_to_root.rend() ; mut_set_id++) {
     Eigen::VectorXd current_result = Eigen::VectorXd::Zero(in_mat.cols());
@@ -235,20 +270,32 @@ Eigen::MatrixXd ARGMatMult::right_mult(
     }
     partial_results.row(*mut_set_id) += current_result;
   }
+  auto t2 = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  std::cout << "traverse time " << duration.count() / 1000.0 << " s" << std::endl;
 
+  t1 = std::chrono::high_resolution_clock::now();
   // finish with the individuals
-  for (auto& entry : indiv_to_mut_set_id) {
-    for (auto mut_set_id : entry.second) {
-      result.row(diploid ? entry.first / 2 : entry.first) += partial_results.row(mut_set_id);
+  // for (auto& entry : indiv_to_mut_set_id) {
+  //   for (auto mut_set_id : entry.second) {
+  //     result.row(diploid ? entry.first / 2 : entry.first) += partial_results.row(mut_set_id);
+  //   }
+  // }
+  for (int i=0; i!=indiv_to_mut_set_id.size(); i++) {
+    for (auto mut_set_id : indiv_to_mut_set_id[i]) {
+      result.row(diploid ? i / 2 : i) += partial_results.row(mut_set_id);
     }
   }
+  t2 = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  std::cout << "assign time " << duration.count() / 1000.0 << " s" << std::endl;
 
   // postprocessing with normalisation
   if (standardize_mut) {
     Eigen::ArrayXd means = allele_frequencies.array() / n_leaves;
     Eigen::VectorXd stds = (2 * means * (1 - means)).sqrt().pow(alpha);
     Eigen::VectorXd offset = 2 * means.matrix().transpose() * stds.asDiagonal() * in_mat;
-    result -= offset;
+    result.rowwise() -= offset.transpose();
     // af = geno.mean(axis=0, keepdims=True)/2
     // std = np.sqrt(2 * af * (1-af))
     // offset = np.ones((n,1)) @ np.divide((2*af).reshape(1, -1), std.reshape(1,-1)) @ input_mat_rhs

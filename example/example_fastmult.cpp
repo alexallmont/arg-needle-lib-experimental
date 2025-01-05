@@ -35,6 +35,7 @@
 #include <boost/functional/hash.hpp>
 #include <boost/timer/progress_display.hpp>
 #include <cassert>
+#include <chrono>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -50,111 +51,115 @@ using std::string;
 using std::tuple;
 using std::unordered_set;
 using std::vector;
+using namespace std::chrono;
 
 int main(int argc, char* argv[])
 {
 
   // ARG arg =
   // arg_utils::deserialize_arg_cpp("/well/palamara/users/awo066/TDPBWT/experiments/1K_genomes/EUR/results/chr1.from752721.to121475791/topology.argn");
-  ARG arg = arg_utils::deserialize_arg_cpp("/well/palamara/users/ray826/arg_needle_lib_dev/test_giant.argn");
+  // ARG arg = arg_utils::deserialize_arg_cpp("/well/palamara/users/ray826/arg_needle_lib_dev/test_giant.argn");
+  ARG arg = arg_utils::deserialize_arg_cpp("/gpfs3/well/palamara/users/ray826/fastmult_arg/single-chunk-test/args/neGBR_n1e+04_l5e6.argn");
   arg.populate_children_and_roots();
-  arg_utils::generate_mutations(arg, 1e-8, 22);
+  arg_utils::generate_mutations(arg, 2e-9, 22);
   arg_utils::prepare_fast_multiplication(arg);
-  boost::timer::progress_display pbar(arg.num_mutations());
+  arg.keep_mutations_within_maf(2.0/arg.leaf_ids.size(), 1-2.0/arg.leaf_ids.size());
+  arg_utils::prepare_fast_multiplication(arg);
+  // boost::timer::progress_display pbar(arg.num_mutations());
 
-  std::unordered_map<int, std::set<int>> mut_topo;
-  // std::unordered_map<std::pair<int, double>, std::set<int>, boost::hash<std::pair<int, double>>> node_split_pos_to_muts;
-  std::unordered_map<int, std::map<double, set<int>>> node_to_split_to_mut_set_id;
-  std::unordered_map<int, set<int>> mut_set_id_to_muts;
+  // std::unordered_map<int, std::set<int>> mut_topo;
+  // // std::unordered_map<std::pair<int, double>, std::set<int>, boost::hash<std::pair<int, double>>> node_split_pos_to_muts;
+  // std::unordered_map<int, std::map<double, set<int>>> node_to_split_to_mut_set_id;
+  // std::unordered_map<int, set<int>> mut_set_id_to_muts;
 
-  for (auto node_it = arg.fast_multiplication_data.topo_order.begin();
-       node_it != arg.fast_multiplication_data.topo_order.end(); node_it++) {
-    auto& splits = arg.fast_multiplication_data.node_id_to_split_points.at(*node_it);
-    node_to_split_to_mut_set_id.emplace(*node_it, std::map<double, set<int>>());
-    for (auto s : splits) {
-      node_to_split_to_mut_set_id.at(*node_it).emplace(s, set<int>());
-    }
-  }
+  // for (auto node_it = arg.fast_multiplication_data.topo_order.begin();
+  //      node_it != arg.fast_multiplication_data.topo_order.end(); node_it++) {
+  //   auto& splits = arg.fast_multiplication_data.node_id_to_split_points.at(*node_it);
+  //   node_to_split_to_mut_set_id.emplace(*node_it, std::map<double, set<int>>());
+  //   for (auto s : splits) {
+  //     node_to_split_to_mut_set_id.at(*node_it).emplace(s, set<int>());
+  //   }
+  // }
 
 
-  int mut_set_id=0;
-  for (auto node_it = arg.fast_multiplication_data.topo_order.begin();
-       node_it != arg.fast_multiplication_data.topo_order.end(); node_it++) {
-    auto& splits = arg.fast_multiplication_data.node_id_to_split_points.at(*node_it);
-    auto& parents = arg.arg_nodes.at(*node_it)->parents;
+  // int mut_set_id=0;
+  // for (auto node_it = arg.fast_multiplication_data.topo_order.begin();
+  //      node_it != arg.fast_multiplication_data.topo_order.end(); node_it++) {
+  //   auto& splits = arg.fast_multiplication_data.node_id_to_split_points.at(*node_it);
+  //   auto& parents = arg.arg_nodes.at(*node_it)->parents;
 
-    if (!parents.empty()) {
-      for (auto& parent_edge_entry : parents) {
-        auto p_start = parent_edge_entry.first;
-        auto& p_edge = parent_edge_entry.second;
-        auto split_start = splits.upper_bound(p_start);
-        split_start--;
-        auto split_end = splits.lower_bound(p_edge->end);
-        for (auto split_it = split_start; split_it != split_end; split_it++) {
-          auto current_split = *split_it;
-          split_it++;
-          auto next_split = *split_it;
-          split_it--;
-          auto sum_start = std::max(p_edge->start, current_split);
-          auto sum_end = std::min(p_edge->end, next_split);
-          // we sum up results for each split by counting contributions from each parent edge
-          set<int> current_split_result;
-          auto parent_res_st = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_start);
-          assert(sum_start == parent_res_st->first);
-          auto parent_res_ed = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_end);
-          assert(sum_end == parent_res_ed->first);
-          for (auto parent_res = parent_res_st; parent_res != parent_res_ed; parent_res++) {
-            auto e = parent_res->second;
-            current_split_result.merge(e);
-          }
-          auto muts = p_edge->mutations_in_range(sum_start, sum_end);
-          if (muts.empty()) {
-            // if (node_to_split_to_muts.at(*node_it).find(sum_start) == node_to_split_to_muts.at(*node_it).end()) {
-            //   node_to_split_to_muts.at(*node_it).emplace(sum_start, current_split_result);
-            // }
-            // else {
-            node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(current_split_result);
-            // }
-          } else {
-            set<int> current_split_muts;
-            for (auto m : muts) {
-              current_split_muts.emplace(arg.fast_multiplication_data.pos_to_mut_id.at(m->position));
-              // mut_topo.emplace(arg.fast_multiplication_data.pos_to_mut_id.at(m->position), current_split_result);
-              ++pbar;
-              // cout << "mut at pos " << m->position << " id " <<
-              // arg.fast_multiplication_data.pos_to_mut_id.at(m->position) << " is desc to mut ids "; for (auto k :
-              // current_split_result) {
-              //   cout << k << " ";
-              // }
-              // cout << endl;
-            }
-            // if (node_to_split_to_muts.at(*node_it).find(sum_start) == node_to_split_to_muts.at(*node_it).end()) {
-            //   node_to_split_to_muts.at(*node_it).emplace(sum_start, current_split_muts);
-            // }
-            // else {
-            mut_topo.emplace(mut_set_id, current_split_result);
-            mut_set_id_to_muts.emplace(mut_set_id, current_split_muts);
-            set<int> m_id;
-            m_id.emplace(mut_set_id);
-            node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(m_id);
-            mut_set_id++;
+  //   if (!parents.empty()) {
+  //     for (auto& parent_edge_entry : parents) {
+  //       auto p_start = parent_edge_entry.first;
+  //       auto& p_edge = parent_edge_entry.second;
+  //       auto split_start = splits.upper_bound(p_start);
+  //       split_start--;
+  //       auto split_end = splits.lower_bound(p_edge->end);
+  //       for (auto split_it = split_start; split_it != split_end; split_it++) {
+  //         auto current_split = *split_it;
+  //         split_it++;
+  //         auto next_split = *split_it;
+  //         split_it--;
+  //         auto sum_start = std::max(p_edge->start, current_split);
+  //         auto sum_end = std::min(p_edge->end, next_split);
+  //         // we sum up results for each split by counting contributions from each parent edge
+  //         set<int> current_split_result;
+  //         auto parent_res_st = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_start);
+  //         assert(sum_start == parent_res_st->first);
+  //         auto parent_res_ed = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_end);
+  //         assert(sum_end == parent_res_ed->first);
+  //         for (auto parent_res = parent_res_st; parent_res != parent_res_ed; parent_res++) {
+  //           auto e = parent_res->second;
+  //           current_split_result.merge(e);
+  //         }
+  //         auto muts = p_edge->mutations_in_range(sum_start, sum_end);
+  //         if (muts.empty()) {
+  //           // if (node_to_split_to_muts.at(*node_it).find(sum_start) == node_to_split_to_muts.at(*node_it).end()) {
+  //           //   node_to_split_to_muts.at(*node_it).emplace(sum_start, current_split_result);
+  //           // }
+  //           // else {
+  //           node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(current_split_result);
+  //           // }
+  //         } else {
+  //           set<int> current_split_muts;
+  //           for (auto m : muts) {
+  //             current_split_muts.emplace(arg.fast_multiplication_data.pos_to_mut_id.at(m->position));
+  //             // mut_topo.emplace(arg.fast_multiplication_data.pos_to_mut_id.at(m->position), current_split_result);
+  //             ++pbar;
+  //             // cout << "mut at pos " << m->position << " id " <<
+  //             // arg.fast_multiplication_data.pos_to_mut_id.at(m->position) << " is desc to mut ids "; for (auto k :
+  //             // current_split_result) {
+  //             //   cout << k << " ";
+  //             // }
+  //             // cout << endl;
+  //           }
+  //           // if (node_to_split_to_muts.at(*node_it).find(sum_start) == node_to_split_to_muts.at(*node_it).end()) {
+  //           //   node_to_split_to_muts.at(*node_it).emplace(sum_start, current_split_muts);
+  //           // }
+  //           // else {
+  //           mut_topo.emplace(mut_set_id, current_split_result);
+  //           mut_set_id_to_muts.emplace(mut_set_id, current_split_muts);
+  //           set<int> m_id;
+  //           m_id.emplace(mut_set_id);
+  //           node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(m_id);
+  //           mut_set_id++;
 
-            // }
-          }
-        }
-      }
-    }
-  }
-  std::map<int, set<int>> indiv_to_mut;
-  for (auto& arg_node_entry : arg.arg_nodes) {
-    if (arg.is_leaf(arg_node_entry.first)) {
-      set<int> muts;
-      for (auto split : arg.fast_multiplication_data.node_id_to_split_points.at(arg_node_entry.first)) {
-        muts.merge(node_to_split_to_mut_set_id.at(arg_node_entry.first).at(split));
-      }
-      indiv_to_mut.emplace(arg_node_entry.first, muts);
-    }
-  }
+  //           // }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+  // std::map<int, set<int>> indiv_to_mut;
+  // for (auto& arg_node_entry : arg.arg_nodes) {
+  //   if (arg.is_leaf(arg_node_entry.first)) {
+  //     set<int> muts;
+  //     for (auto split : arg.fast_multiplication_data.node_id_to_split_points.at(arg_node_entry.first)) {
+  //       muts.merge(node_to_split_to_mut_set_id.at(arg_node_entry.first).at(split));
+  //     }
+  //     indiv_to_mut.emplace(arg_node_entry.first, muts);
+  //   }
+  // }
 
   Eigen::MatrixXi mut_mat = arg_utils::get_mutations_matrix(arg).cast<int>(); // p x n
   // cout << mut_mat.rows() << " " << mut_mat.cols() << endl;
@@ -182,119 +187,186 @@ int main(int argc, char* argv[])
   //   }
   // }
 
-  cout << mut_set_id << endl;
-  cout << arg.num_mutations() << endl;
-  cout << arg.fast_multiplication_data.pos_to_mut_id.size() << endl;
+  // cout << mut_set_id << endl;
+  // cout << arg.num_mutations() << endl;
+  // cout << arg.fast_multiplication_data.pos_to_mut_id.size() << endl;
 
-  Eigen::VectorXi found_mut(arg.num_mutations());
-  found_mut.fill(0);
-  for (auto& entry : mut_set_id_to_muts) {
-    for (auto& mid : entry.second) {
-      assert(found_mut[mid] == 0);
-      found_mut[mid] = 1;
-    }
-  }
-  assert(found_mut.sum() == arg.num_mutations());
+  // Eigen::VectorXi found_mut(arg.num_mutations());
+  // found_mut.fill(0);
+  // for (auto& entry : mut_set_id_to_muts) {
+  //   for (auto& mid : entry.second) {
+  //     assert(found_mut[mid] == 0);
+  //     found_mut[mid] = 1;
+  //   }
+  // }
+  // assert(found_mut.sum() == arg.num_mutations());
 
-  std::map<int, set<int>> mut_topo_bottom_up;
-  for (int i = 0; i != mut_set_id; i++)
-    mut_topo_bottom_up.emplace(i, set<int>());
+  // std::map<int, set<int>> mut_topo_bottom_up;
+  // for (int i = 0; i != mut_set_id; i++)
+  //   mut_topo_bottom_up.emplace(i, set<int>());
 
-  for (auto& entry : mut_topo) {
-    for (auto& anc : entry.second) {
-      mut_topo_bottom_up.at(anc).emplace(entry.first);
-    }
-  }
-  for (auto& entry : indiv_to_mut) {
-    for (auto& mut : entry.second) {
-      mut_topo_bottom_up.at(mut).emplace(-1 * (1+entry.first));
-    }
-  }
+  // for (auto& entry : mut_topo) {
+  //   for (auto& anc : entry.second) {
+  //     mut_topo_bottom_up.at(anc).emplace(entry.first);
+  //   }
+  // }
+  // for (auto& entry : indiv_to_mut) {
+  //   for (auto& mut : entry.second) {
+  //     mut_topo_bottom_up.at(mut).emplace(-1 * (1+entry.first));
+  //   }
+  // }
 
 
-  cout << "verify genotypes" << endl;
-  boost::timer::progress_display pgbar(mut_set_id);
+  // cout << "verify genotypes" << endl;
+  // boost::timer::progress_display pgbar(mut_set_id);
 
-  for (auto& entry : mut_topo_bottom_up) {
-    ++pgbar;
-    auto anc_mut = entry.first;
-    // cout << "checking mut set id " << anc_mut << " including mut id { " << std::flush;
-    Eigen::RowVectorXi actual_geno = mut_mat.row(*mut_set_id_to_muts.at(anc_mut).begin()).cast<int>();
-    Eigen::RowVectorXi pred_geno = Eigen::VectorXi::Zero(arg.leaf_ids.size());
-    // for (auto m : mut_set_id_to_muts.at(anc_mut)) {
-    //   cout << m << " ";
-    // }
-    // cout << "}\n";
-    if (!entry.second.empty()){
-      for (auto& des : entry.second) {
-        // cout << "  mut set id " << des << " including mut id {" << std::flush;
-        if (des >= 0) {
-          // for (auto m : mut_set_id_to_muts.at(des)) {
-          //   cout << m << " " << std::flush;
-          // }
-          // cout << "}\n";
-          pred_geno += mut_mat.row(*mut_set_id_to_muts.at(des).begin()).cast<int>();
-        }
-        else {
-          // cout << "indv_" << (-1*des - 1) << "}" << endl;
-          pred_geno[-1*des - 1] += 1;
-        }
-      }
+  // for (auto& entry : mut_topo_bottom_up) {
+  //   ++pgbar;
+  //   auto anc_mut = entry.first;
+  //   // cout << "checking mut set id " << anc_mut << " including mut id { " << std::flush;
+  //   Eigen::RowVectorXi actual_geno = mut_mat.row(*mut_set_id_to_muts.at(anc_mut).begin()).cast<int>();
+  //   Eigen::RowVectorXi pred_geno = Eigen::VectorXi::Zero(arg.leaf_ids.size());
+  //   // for (auto m : mut_set_id_to_muts.at(anc_mut)) {
+  //   //   cout << m << " ";
+  //   // }
+  //   // cout << "}\n";
+  //   if (!entry.second.empty()){
+  //     for (auto& des : entry.second) {
+  //       // cout << "  mut set id " << des << " including mut id {" << std::flush;
+  //       if (des >= 0) {
+  //         // for (auto m : mut_set_id_to_muts.at(des)) {
+  //         //   cout << m << " " << std::flush;
+  //         // }
+  //         // cout << "}\n";
+  //         pred_geno += mut_mat.row(*mut_set_id_to_muts.at(des).begin()).cast<int>();
+  //       }
+  //       else {
+  //         // cout << "indv_" << (-1*des - 1) << "}" << endl;
+  //         pred_geno[-1*des - 1] += 1;
+  //       }
+  //     }
 
-    }
-    if(actual_geno != pred_geno) {
-      cout << actual_geno << endl;
-      cout << pred_geno << endl;
-      break;
-    }
-  }
-  cout << "verify indv genotypes" << endl;
-  boost::timer::progress_display ppbar(arg.leaf_ids.size());
+  //   }
+  //   if(actual_geno != pred_geno) {
+  //     cout << actual_geno << endl;
+  //     cout << pred_geno << endl;
+  //     break;
+  //   }
+  // }
+  // cout << "verify indv genotypes" << endl;
+  // boost::timer::progress_display ppbar(arg.leaf_ids.size());
 
-  for (auto& leaf_id : arg.leaf_ids) {
-    ++ppbar;
-    // cout << "checking mut set id " << anc_mut << " including mut id { " << std::flush;
-    Eigen::RowVectorXi actual_geno = mut_mat.col(leaf_id).cast<int>();
-    Eigen::RowVectorXi pred_geno = Eigen::VectorXi::Zero(arg.num_mutations());
+  // for (auto& leaf_id : arg.leaf_ids) {
+  //   ++ppbar;
+  //   // cout << "checking mut set id " << anc_mut << " including mut id { " << std::flush;
+  //   Eigen::RowVectorXi actual_geno = mut_mat.col(leaf_id).cast<int>();
+  //   Eigen::RowVectorXi pred_geno = Eigen::VectorXi::Zero(arg.num_mutations());
 
-    std::deque<int> mut_set_id_to_process;
+  //   std::deque<int> mut_set_id_to_process;
 
-    for (auto entry : indiv_to_mut.at(leaf_id)) {
-      mut_set_id_to_process.emplace_back(entry);
-    }
+  //   for (auto entry : indiv_to_mut.at(leaf_id)) {
+  //     mut_set_id_to_process.emplace_back(entry);
+  //   }
 
-    while (!mut_set_id_to_process.empty()) {
-      int mut_set_id = mut_set_id_to_process.front();
-      mut_set_id_to_process.pop_front();
-      for (int mut_id : mut_set_id_to_muts.at(mut_set_id)) {
-        pred_geno[mut_id] += 1;
-      }
-      for (int more_mut_set : mut_topo.at(mut_set_id)) mut_set_id_to_process.emplace_back(more_mut_set);
-    }
-    if(actual_geno != pred_geno) {
-      cout << actual_geno << endl;
-      cout << pred_geno << endl;
-      break;
-    }
-  }
+  //   while (!mut_set_id_to_process.empty()) {
+  //     int mut_set_id = mut_set_id_to_process.front();
+  //     mut_set_id_to_process.pop_front();
+  //     for (int mut_id : mut_set_id_to_muts.at(mut_set_id)) {
+  //       pred_geno[mut_id] += 1;
+  //     }
+  //     for (int more_mut_set : mut_topo.at(mut_set_id)) mut_set_id_to_process.emplace_back(more_mut_set);
+  //   }
+  //   if(actual_geno != pred_geno) {
+  //     cout << actual_geno << endl;
+  //     cout << pred_geno << endl;
+  //     break;
+  //   }
+  // }
 
-  ARGMatMult test_geno;
-  test_geno.load_arg(arg);
+
+  auto t1 = high_resolution_clock::now();
+  // ARGMatMult test_geno;
+  // test_geno.load_arg(arg);
+  ARGMatMult test_geno(arg);
+  auto t2 = high_resolution_clock::now();
+  auto duration = duration_cast<milliseconds>(t2 - t1);
+  cout << "index build time " << duration.count() / 1000.0 << " s" << endl;
+
   cout << test_geno.mut_set_topo_order_leaf_to_root.size() << endl;
-  Eigen::MatrixXd left_in = Eigen::MatrixXd::Random(20, arg.leaf_ids.size());
-  Eigen::MatrixXd left_out = test_geno.left_mult(left_in, false, 0, false);
-  Eigen::MatrixXd ref_left_out = left_in * mut_mat.cast<double>().transpose();
 
-  cout << (ref_left_out - left_out).cwiseAbs().sum() << endl;
+  Eigen::MatrixXd mut_mat_used = mut_mat.cast<double>().transpose();
+
+  Eigen::MatrixXd dip_geno = Eigen::MatrixXd::Zero(arg.leaf_ids.size()/2, mut_mat.rows());
+  for (int i =0; i != mut_mat_used.rows(); i++) {
+    dip_geno.row(i/2) += mut_mat_used.row(i);
+  }
+
+  // Eigen::ArrayXd af = dip_geno.colwise().sum() / arg.leaf_ids.size();
+  // dip_geno.rowwise() -= (2*af).transpose().matrix();
+  double alpha=-1;
+  // dip_geno.array().rowwise() *= ((2*af*(1-af)).sqrt().pow(alpha)).transpose();
+
+  bool normalise = false;
+  mut_mat_used = dip_geno;
+
+  cout << "genotype matrix size " << dip_geno.rows() << " x " << dip_geno.cols() << endl;
+
+
+  Eigen::MatrixXd left_in = Eigen::MatrixXd::Random(20, arg.leaf_ids.size()/2);
+  t1 = high_resolution_clock::now();
+  Eigen::MatrixXd left_out = test_geno.left_mult(left_in, normalise, alpha, true);
+  t2 = high_resolution_clock::now();
+  duration = duration_cast<milliseconds>(t2 - t1);
+  cout << "left mult time arg   " << duration.count() / 1000.0 << " s" << endl;
+  t1 = high_resolution_clock::now();
+  Eigen::MatrixXd ref_left_out = left_in * mut_mat_used;
+  t2 = high_resolution_clock::now();
+  duration = duration_cast<milliseconds>(t2 - t1);
+  cout << "left mult time eigen " << duration.count() / 1000.0 << " s" << endl;
+  t1 = high_resolution_clock::now();
+  Eigen::MatrixXd arg_left_out = arg_utils::ARG_matrix_multiply_existing_mut_fast(arg, left_in, normalise, alpha, true);
+  t2 = high_resolution_clock::now();
+  duration = duration_cast<milliseconds>(t2 - t1);
+  cout << "left mult time old " << duration.count() / 1000.0 << " s" << endl;
+
+  cout << "total abs diff " << (ref_left_out - left_out).cwiseAbs().sum() << endl;
+  cout << "total abs diff with old mult " << (arg_left_out - left_out).cwiseAbs().sum() << endl;
 
   Eigen::MatrixXd right_in = Eigen::MatrixXd::Random(arg.num_mutations(), 20);
-  Eigen::MatrixXd right_out = test_geno.right_mult(right_in, false, 0, false);
-  Eigen::MatrixXd ref_right_out = mut_mat.cast<double>().transpose() * right_in;
+  t1 = high_resolution_clock::now();
+  Eigen::MatrixXd right_out = test_geno.right_mult(right_in, normalise, alpha, true);
+  t2 = high_resolution_clock::now();
+  duration = duration_cast<milliseconds>(t2 - t1);
+  cout << "right mult time arg   " << duration.count() / 1000.0 << " s" << endl;
+  t1 = high_resolution_clock::now();
+  Eigen::MatrixXd ref_right_out = mut_mat_used * right_in;
+  t2 = high_resolution_clock::now();
+  duration = duration_cast<milliseconds>(t2 - t1);
+  cout << "right mult time eigen " << duration.count() / 1000.0 << " s" << endl;
+  t1 = high_resolution_clock::now();
+  Eigen::MatrixXd arg_right_out = arg_utils::ARG_matrix_multiply_samples_faster(arg, right_in, normalise, alpha, true);
+  t2 = high_resolution_clock::now();
+  duration = duration_cast<milliseconds>(t2 - t1);
+  cout << "right mult time old " << duration.count() / 1000.0 << " s" << endl;
 
-  cout << (ref_right_out - right_out).cwiseAbs().sum() << endl;
+  cout << "total abs diff " << (ref_right_out - right_out).cwiseAbs().sum() << endl;
+  cout << "total abs diff with old mult " << (arg_right_out - right_out).cwiseAbs().sum() << endl;
 
-  cout << ref_left_out.col(0).transpose() << endl;
-  cout << left_out.col(0).transpose() << endl;
+
+  // Eigen::MatrixXd left_in_dip = Eigen::MatrixXd::Random(20, arg.leaf_ids.size()/2);
+  // Eigen::MatrixXd left_out_dip = test_geno.left_mult(left_in_dip, true, alpha, true);
+  // Eigen::MatrixXd ref_left_out_dip = left_in_dip * dip_geno;
+
+  // cout << (ref_left_out_dip - left_out_dip).cwiseAbs().sum() << endl;
+
+  // right_in = Eigen::MatrixXd::Random(arg.num_mutations(), 20);
+  // Eigen::MatrixXd right_out_dip = test_geno.right_mult(right_in, true, alpha, true);
+  // Eigen::MatrixXd ref_right_out_dip = dip_geno * right_in;
+
+  // cout << (ref_right_out_dip - right_out_dip).cwiseAbs().sum() << endl;
+
+  // cout << ref_left_out.col(0).transpose() << endl;
+  // cout << left_out.col(0).transpose() << endl;
   // for (int i=0; i != ref_right_out.rows(); i ++) {
   //   if (ref_right_out.row(i) != right_out.row(i)) {
   //     cout << i << endl;

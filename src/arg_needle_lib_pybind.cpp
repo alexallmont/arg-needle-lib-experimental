@@ -19,6 +19,7 @@
 
 #include "arg.hpp"
 #include "arg_edge.hpp"
+#include "arg_mult.hpp"
 #include "arg_node.hpp"
 #include "arg_utils.hpp"
 #include "descendant_list.hpp"
@@ -275,6 +276,15 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
       .def_readwrite("Phat", &ALStructure::Phat, "P matrix estimated by ALStructure")
       .def_readwrite("Qhat", &ALStructure::Qhat, "Q matrix estimated by ALStructure")
       .def("fit_ALS", &ALStructure::fit_ALS, "Fit ALStructure model", py::call_guard<py::scoped_ostream_redirect, py::scoped_estream_redirect>());
+  py::class_<ARGMatMult>(m, "ARGMatMult")
+      .def(py::init<ARG&>(), "Load ARG to perform fast ARG-mat multiplication", py::arg("ARG"))
+      .def(py::init<>(), "Default empty constructor")
+      .def_readwrite("allele_frequencies", &ARGMatMult::allele_frequencies, "allele frequency used to normalise genotypes")
+      .def_readwrite("n_mutations", &ARGMatMult::n_mut_indexed, "number of indexed mutations")
+      .def_readwrite("n_samples", &ARGMatMult::n_leaves, "number of indexed leaf nodes")
+      .def("load_arg", &ARGMatMult::load_arg, py::arg("ARG"))
+      .def("right_multiply", &ARGMatMult::right_mult, py::arg("in_mat"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true)
+      .def("left_multiply", &ARGMatMult::left_mult, py::arg("in_mat"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true);
 
   // arg_utils: general ARG querying
   m.def("arg_to_newick", &arg_utils::arg_to_newick, py::arg("arg"), py::arg("verbose") = false,
