@@ -31,13 +31,13 @@ public:
   ARGMatMult() = default;
 
   // mapping from a descendant set of mutations to all of its ancestral sets of mutations
-  boost::unordered_flat_map<int, boost::container::flat_set<int>> mut_topo_desc_to_anc;
+  std::vector<std::vector<int>> mut_topo_desc_to_anc;
   // mapping from an ancestral set of mutations to all of its descendant sets of mutations
-  boost::unordered_flat_map<int, boost::container::flat_set<int>> mut_topo_anc_to_desc;
+  std::vector<std::vector<int>> mut_topo_anc_to_desc;
   // mapping from mutation set id to its member mutations
-  boost::unordered_flat_map<int, boost::container::flat_set<int>> mut_set_id_to_muts;
+  std::vector<std::vector<int>> mut_set_id_to_muts;
   // mapping from leaf_id to the mutation set ids it contains
-  std::vector<boost::container::flat_set<int>> indiv_to_mut_set_id;
+  std::vector<std::vector<int>> indiv_to_mut_set_id;
   // number of mutations indexed, for now it's the same as arg.num_mutations()
   int n_mut_indexed;
   // topological ordering of mutation sets

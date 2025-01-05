@@ -11,20 +11,24 @@ void ARGMatMult::load_arg(ARG& arg)
   }
   arg_utils::prepare_fast_multiplication(arg);
 
-  boost::unordered_flat_map<int, boost::container::flat_map<double, boost::container::flat_set<int>>> node_to_split_to_mut_set_id;
+  boost::unordered_flat_map<int, boost::container::flat_map<double, std::vector<int>>> node_to_split_to_mut_set_id;
   node_to_split_to_mut_set_id.reserve(arg.arg_nodes.size());
   // fill the split positions
   for (auto node_it = arg.fast_multiplication_data.topo_order.begin();
        node_it != arg.fast_multiplication_data.topo_order.end(); node_it++) {
     auto& splits = arg.fast_multiplication_data.node_id_to_split_points.at(*node_it);
-    node_to_split_to_mut_set_id.emplace(*node_it, boost::container::flat_map<double, boost::container::flat_set<int>>());
+    node_to_split_to_mut_set_id.emplace(*node_it, boost::container::flat_map<double, std::vector<int>>());
     for (auto s : splits) {
-      node_to_split_to_mut_set_id.at(*node_it).emplace(s, boost::container::flat_set<int>());
+      node_to_split_to_mut_set_id.at(*node_it).emplace(s, std::vector<int>());
     }
   }
 
   // begin traversing the arg from root to leaves, filling in the topology of mutation sets
   int mut_set_id = 0;
+  mut_topo_anc_to_desc.reserve(arg.num_mutations());
+  mut_topo_desc_to_anc.reserve(arg.num_mutations());
+  mut_set_id_to_muts.reserve(arg.num_mutations());
+
   boost::timer::progress_display pbar(arg.num_mutations());
 
   for (auto node_it = arg.fast_multiplication_data.topo_order.begin();
@@ -47,29 +51,36 @@ void ARGMatMult::load_arg(ARG& arg)
           auto sum_start = std::max(p_edge->start, current_split);
           auto sum_end = std::min(p_edge->end, next_split);
           // we sum up results for each split by counting contributions from each parent edge
-          boost::container::flat_set<int> current_split_result;
+          std::vector<int> current_split_result;
           auto parent_res_st = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_start);
           assert(sum_start == parent_res_st->first);
           auto parent_res_ed = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_end);
           assert(sum_end == parent_res_ed->first);
           for (auto parent_res = parent_res_st; parent_res != parent_res_ed; parent_res++) {
             auto e = parent_res->second;
-            current_split_result.merge(e);
+            current_split_result.reserve(current_split_result.size() + std::distance(e.begin(), e.end()));
+            current_split_result.insert(std::end(current_split_result), std::begin(e), std::end(e));
           }
           auto muts = p_edge->mutations_in_range(sum_start, sum_end);
           if (muts.empty()) {
-            node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(current_split_result);
+            auto& current_node_result = node_to_split_to_mut_set_id.at(*node_it).at(current_split);
+            current_node_result.reserve(current_node_result.size() + std::distance(current_split_result.begin(), current_split_result.end()));
+            current_node_result.insert(std::end(current_node_result), std::begin(current_split_result), std::end(current_split_result));
+            // node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(current_split_result);
           } else {
-            boost::container::flat_set<int> current_split_muts;
+            std::vector<int> current_split_muts;
             for (auto m : muts) {
-              current_split_muts.emplace(arg.fast_multiplication_data.pos_to_mut_id.at(m->position));
+              current_split_muts.emplace_back(arg.fast_multiplication_data.pos_to_mut_id.at(m->position));
               ++pbar;
             }
-            mut_topo_desc_to_anc.emplace(mut_set_id, current_split_result);
-            mut_set_id_to_muts.emplace(mut_set_id, current_split_muts);
-            boost::container::flat_set<int> m_id;
-            m_id.emplace(mut_set_id);
-            node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(m_id);
+            mut_topo_desc_to_anc.emplace_back(current_split_result);
+            mut_set_id_to_muts.emplace_back(current_split_muts);
+            std::vector<int> m_id;
+            m_id.emplace_back(mut_set_id);
+            auto& current_node_result = node_to_split_to_mut_set_id.at(*node_it).at(current_split);
+            current_node_result.reserve(current_node_result.size() + std::distance(m_id.begin(), m_id.end()));
+            current_node_result.insert(std::end(current_node_result), std::begin(m_id), std::end(m_id));
+            // node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(m_id);
             mut_set_id++;
           }
         }
@@ -79,23 +90,24 @@ void ARGMatMult::load_arg(ARG& arg)
 
   // now fill the topology in reverse order, i.e. from leaf to root
   for (int i = 0; i != mut_set_id; i++)
-    mut_topo_anc_to_desc.emplace(i, boost::container::flat_set<int>());
+    mut_topo_anc_to_desc.emplace_back(std::vector<int>());
 
-  for (auto& entry : mut_topo_desc_to_anc) {
-    for (auto& anc : entry.second) {
-      mut_topo_anc_to_desc.at(anc).emplace(entry.first);
+  for (int i=0; i != mut_set_id; i++) {
+    for (auto& anc : mut_topo_desc_to_anc[i]) {
+      mut_topo_anc_to_desc[anc].emplace_back(i);
     }
   }
 
   // also need a topological ordering of these mutation sets
   std::queue<int> topo_to_process; // sets with zero descendant
-  boost::unordered_flat_map<int, int> desc_count;
+  std::vector<int> desc_count;
+  desc_count.reserve(mut_set_id);
 
-  for (auto& mut_set_entry : mut_topo_anc_to_desc) {
-    if (!mut_set_entry.second.empty()) {
-      desc_count.emplace(mut_set_entry.first, mut_set_entry.second.size());
-    } else {
-      topo_to_process.push(mut_set_entry.first);
+  for (int i=0; i != mut_set_id; i++) {
+    int dc = mut_topo_anc_to_desc[i].size();
+    desc_count.emplace_back(dc);
+    if (dc == 0) {
+      topo_to_process.push(i);
     }
   }
 
@@ -115,9 +127,11 @@ void ARGMatMult::load_arg(ARG& arg)
 
   // finally special treatment for the sample leaves, linking them with their immediate ancestral mutation sets
   for (int leaf_id=0; leaf_id != arg.leaf_ids.size(); leaf_id++) {
-    boost::container::flat_set<int> muts;
+    std::vector<int> muts;
     for (auto split : arg.fast_multiplication_data.node_id_to_split_points.at(leaf_id)) {
-      muts.merge(node_to_split_to_mut_set_id.at(leaf_id).at(split));
+      auto& mut_sets = node_to_split_to_mut_set_id.at(leaf_id).at(split);
+      muts.reserve(muts.size() + std::distance(mut_sets.begin(), mut_sets.end()));
+      muts.insert(std::end(muts), std::begin(mut_sets), std::end(mut_sets));
     }
     indiv_to_mut_set_id.emplace_back(muts);
   }
@@ -198,9 +212,9 @@ Eigen::MatrixXd ARGMatMult::left_mult(
   std::cout << "traverse time " << duration.count() / 1000.0 << " s" << std::endl;
 
   t1 = std::chrono::high_resolution_clock::now();
-  for (auto& entry : mut_set_id_to_muts) {
-    auto res = partial_result.col(entry.first);
-    for (int m_id : entry.second) {
+  for (int i=0; i!= mut_set_id_to_muts.size(); i++) {
+    auto res = partial_result.col(i);
+    for (int m_id : mut_set_id_to_muts[i]) {
       result.col(m_id) = res;
     }
   }
