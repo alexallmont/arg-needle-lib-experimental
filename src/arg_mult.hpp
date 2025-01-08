@@ -38,6 +38,8 @@ public:
   std::vector<std::vector<int>> mut_set_id_to_muts;
   // mapping from leaf_id to the mutation set ids it contains
   std::vector<std::vector<int>> indiv_to_mut_set_id;
+  // mapping from mutation set id to leaf ids that it is ancestral to
+  std::vector<std::vector<int>> mut_set_id_to_indiv;
   // number of mutations indexed, for now it's the same as arg.num_mutations()
   int n_mut_indexed;
   // topological ordering of mutation sets

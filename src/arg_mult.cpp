@@ -56,13 +56,15 @@ void ARGMatMult::load_arg(ARG& arg)
           assert(sum_start == parent_res_st->first);
           auto parent_res_ed = node_to_split_to_mut_set_id.at(p_edge->parent->ID).lower_bound(sum_end);
           assert(sum_end == parent_res_ed->first);
+          int count_of_meaningful_parent_sets = 0;
           for (auto parent_res = parent_res_st; parent_res != parent_res_ed; parent_res++) {
             auto e = parent_res->second;
+            if (!e.empty()) count_of_meaningful_parent_sets += 1;
             current_split_result.reserve(current_split_result.size() + std::distance(e.begin(), e.end()));
             current_split_result.insert(std::end(current_split_result), std::begin(e), std::end(e));
           }
           auto muts = p_edge->mutations_in_range(sum_start, sum_end);
-          if (muts.empty()) {
+          if (muts.empty() && count_of_meaningful_parent_sets <= 1) {
             auto& current_node_result = node_to_split_to_mut_set_id.at(*node_it).at(current_split);
             current_node_result.reserve(current_node_result.size() + std::distance(current_split_result.begin(), current_split_result.end()));
             current_node_result.insert(std::end(current_node_result), std::begin(current_split_result), std::end(current_split_result));
@@ -75,10 +77,9 @@ void ARGMatMult::load_arg(ARG& arg)
             }
             mut_topo_desc_to_anc.emplace_back(current_split_result);
             mut_set_id_to_muts.emplace_back(current_split_muts);
-            std::vector<int> m_id;
-            m_id.emplace_back(mut_set_id);
+            std::vector<int> m_id = {mut_set_id};
             auto& current_node_result = node_to_split_to_mut_set_id.at(*node_it).at(current_split);
-            current_node_result.reserve(current_node_result.size() + std::distance(m_id.begin(), m_id.end()));
+            current_node_result.reserve(current_node_result.size() + 1);
             current_node_result.insert(std::end(current_node_result), std::begin(m_id), std::end(m_id));
             // node_to_split_to_mut_set_id.at(*node_it).at(current_split).merge(m_id);
             mut_set_id++;
@@ -126,12 +127,18 @@ void ARGMatMult::load_arg(ARG& arg)
   desc_count.clear();
 
   // finally special treatment for the sample leaves, linking them with their immediate ancestral mutation sets
+  mut_set_id_to_indiv.reserve(mut_set_id);
+  for (int i=0; i!=mut_set_id; i++) mut_set_id_to_indiv.push_back(std::vector<int>());
   for (int leaf_id=0; leaf_id != arg.leaf_ids.size(); leaf_id++) {
     std::vector<int> muts;
     for (auto split : arg.fast_multiplication_data.node_id_to_split_points.at(leaf_id)) {
       auto& mut_sets = node_to_split_to_mut_set_id.at(leaf_id).at(split);
       muts.reserve(muts.size() + std::distance(mut_sets.begin(), mut_sets.end()));
       muts.insert(std::end(muts), std::begin(mut_sets), std::end(mut_sets));
+
+      for (int m : mut_sets) {
+        mut_set_id_to_indiv[m].emplace_back(leaf_id);
+      }
     }
     indiv_to_mut_set_id.emplace_back(muts);
   }
@@ -181,12 +188,17 @@ Eigen::MatrixXd ARGMatMult::left_mult(
   //     partial_result.col(anc_mut_set) += target_col;
   //   }
   // }
-  for (int leaf_id=0; leaf_id != indiv_to_mut_set_id.size(); leaf_id++) {
-    int indv_id = diploid ? leaf_id / 2 : leaf_id;
-    const auto& target_col = in_mat.col(indv_id);
-    for (int anc_mut_set : indiv_to_mut_set_id[leaf_id]) {
-      // for (int mut_id : mut_set_id_to_muts.at(anc_mut_set))
-      partial_result.col(anc_mut_set) += target_col;
+  // for (int leaf_id=0; leaf_id != indiv_to_mut_set_id.size(); leaf_id++) {
+  //   int indv_id = diploid ? leaf_id / 2 : leaf_id;
+  //   const auto& target_col = in_mat.col(indv_id);
+  //   for (int anc_mut_set : indiv_to_mut_set_id[leaf_id]) {
+  //     // for (int mut_id : mut_set_id_to_muts.at(anc_mut_set))
+  //     partial_result.col(anc_mut_set) += target_col;
+  //   }
+  // }
+  for (int ms_id = 0; ms_id != mut_set_id_to_indiv.size(); ms_id++) {
+    for (int indv : mut_set_id_to_indiv[ms_id]) {
+      partial_result.col(ms_id) += in_mat.col(diploid? indv/2 : indv);
     }
   }
   auto t2 = std::chrono::high_resolution_clock::now();
