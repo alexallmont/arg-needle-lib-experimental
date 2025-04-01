@@ -284,7 +284,9 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
       .def_readwrite("n_samples", &ARGMatMult::n_leaves, "number of indexed leaf nodes")
       .def("load_arg", &ARGMatMult::load_arg, py::arg("ARG"))
       .def("right_multiply", &ARGMatMult::right_mult, py::arg("in_mat"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true)
-      .def("left_multiply", &ARGMatMult::left_mult, py::arg("in_mat"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true);
+      .def("left_multiply", &ARGMatMult::left_mult, py::arg("in_mat"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true)
+      .def("save_hdf5", &ARGMatMult::save_hdf5, py::arg("path"), "save mutation data to hdf5")
+      .def("load_hdf5", &ARGMatMult::load_hdf5, py::arg("path"), "load mutation data from hdf5");
 
   // arg_utils: general ARG querying
   m.def("arg_to_newick", &arg_utils::arg_to_newick, py::arg("arg"), py::arg("verbose") = false,

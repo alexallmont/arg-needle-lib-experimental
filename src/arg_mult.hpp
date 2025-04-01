@@ -19,6 +19,7 @@
 #include "arg_utils.hpp"
 #include "descendant_list.hpp"
 #include "random_utils.hpp"
+#include "H5Cpp.h"
 
 class ARGMatMult
 {
@@ -57,4 +58,9 @@ public:
   Eigen::MatrixXd left_mult(const Eigen::MatrixXd& in_mat, bool standardize_mut=true, arg_real_t alpha=-1, bool diploid=true);
   // multiply (n x p) genotype matrix from the right hand side, output is (n x k)
   Eigen::MatrixXd right_mult(const Eigen::MatrixXd& in_mat, bool standardize_mut=true, arg_real_t alpha=-1, bool diploid=true);
+
+
+  void save_hdf5(const std::string &filename) ;
+  void load_hdf5(const std::string &filename) ;
+
 };

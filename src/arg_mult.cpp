@@ -203,7 +203,7 @@ Eigen::MatrixXd ARGMatMult::left_mult(
   }
   auto t2 = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-  std::cout << "init build time " << duration.count() / 1000.0 << " s" << std::endl;
+  // std::cout << "init build time " << duration.count() / 1000.0 << " s" << std::endl;
 
   t1 = std::chrono::high_resolution_clock::now();
   // traverse upwards
@@ -221,7 +221,7 @@ Eigen::MatrixXd ARGMatMult::left_mult(
   }
   t2 = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-  std::cout << "traverse time " << duration.count() / 1000.0 << " s" << std::endl;
+  // std::cout << "traverse time " << duration.count() / 1000.0 << " s" << std::endl;
 
   t1 = std::chrono::high_resolution_clock::now();
   for (int i=0; i!= mut_set_id_to_muts.size(); i++) {
@@ -232,7 +232,7 @@ Eigen::MatrixXd ARGMatMult::left_mult(
   }
   t2 = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-  std::cout << "assign time " << duration.count() / 1000.0 << " s" << std::endl;
+  // std::cout << "assign time " << duration.count() / 1000.0 << " s" << std::endl;
 
   // postprocessing and deal with normalisation
   if (standardize_mut) {
@@ -328,4 +328,166 @@ Eigen::MatrixXd ARGMatMult::right_mult(
     // return geno @ np.diag(1/std.flatten()) @ input_mat_rhs - offset
   }
   return result;
+}
+
+// Save the ARGMatMult data to an HDF5 file.
+void ARGMatMult::save_hdf5(const std::string &filename) 
+{
+  try {
+    // Open file for writing (overwrite if exists)
+    H5::H5File file(filename, H5F_ACC_TRUNC);
+
+    // Save n_mut_indexed
+    {
+      hsize_t dim = 1;
+      H5::DataSpace dataspace(1, &dim);
+      H5::DataSet dataset = file.createDataSet("n_mut_indexed", H5::PredType::NATIVE_INT, dataspace);
+      dataset.write(&n_mut_indexed, H5::PredType::NATIVE_INT);
+    }
+
+    // Save n_leaves
+    {
+      hsize_t dim = 1;
+      H5::DataSpace dataspace(1, &dim);
+      H5::DataSet dataset = file.createDataSet("n_leaves", H5::PredType::NATIVE_INT, dataspace);
+      dataset.write(&n_leaves, H5::PredType::NATIVE_INT);
+    }
+
+    // Save allele_frequencies (as a 1D double array)
+    {
+      hsize_t dim = allele_frequencies.size();
+      H5::DataSpace dataspace(1, &dim);
+      H5::DataSet dataset = file.createDataSet("allele_frequencies", H5::PredType::NATIVE_DOUBLE, dataspace);
+      if(dim > 0)
+        dataset.write(allele_frequencies.data(), H5::PredType::NATIVE_DOUBLE);
+    }
+
+    // Helper lambda to save a vector of vectors of int as a flattened 1D array with auxiliary sizes.
+    auto saveVectorVector = [&file](const std::vector<std::vector<int>> &data, const std::string &baseName) {
+      std::vector<int> sizes;
+      std::vector<int> flat;
+      for (const auto &vec : data) {
+        sizes.push_back(vec.size());
+        flat.insert(flat.end(), vec.begin(), vec.end());
+      }
+
+      // Save the flattened array.
+      hsize_t flat_dim = flat.size();
+      H5::DataSpace flat_space(1, &flat_dim);
+      H5::DataSet flat_dataset = file.createDataSet((baseName + "_flat").c_str(), H5::PredType::NATIVE_INT, flat_space);
+      if(flat_dim > 0)
+        flat_dataset.write(flat.data(), H5::PredType::NATIVE_INT);
+
+      // Save the sizes array.
+      hsize_t sizes_dim = sizes.size();
+      H5::DataSpace sizes_space(1, &sizes_dim);
+      H5::DataSet sizes_dataset = file.createDataSet((baseName + "_sizes").c_str(), H5::PredType::NATIVE_INT, sizes_space);
+      if(sizes_dim > 0)
+        sizes_dataset.write(sizes.data(), H5::PredType::NATIVE_INT);
+    };
+
+    saveVectorVector(mut_topo_desc_to_anc, "mut_topo_desc_to_anc");
+    saveVectorVector(mut_topo_anc_to_desc, "mut_topo_anc_to_desc");
+    saveVectorVector(mut_set_id_to_muts, "mut_set_id_to_muts");
+    saveVectorVector(indiv_to_mut_set_id, "indiv_to_mut_set_id");
+    saveVectorVector(mut_set_id_to_indiv, "mut_set_id_to_indiv");
+
+    // Save the one-dimensional vector: mut_set_topo_order_leaf_to_root
+    {
+      hsize_t dim = mut_set_topo_order_leaf_to_root.size();
+      H5::DataSpace dataspace(1, &dim);
+      H5::DataSet dataset = file.createDataSet("mut_set_topo_order_leaf_to_root", H5::PredType::NATIVE_INT, dataspace);
+      if(dim > 0)
+        dataset.write(mut_set_topo_order_leaf_to_root.data(), H5::PredType::NATIVE_INT);
+    }
+  }
+  catch (H5::Exception &e) {
+    std::cerr << "HDF5 Exception during save: " << e.getDetailMsg() << std::endl;
+    throw;
+  }
+}
+
+// Load the ARGMatMult data from an HDF5 file.
+void ARGMatMult::load_hdf5(const std::string &filename)
+{
+  try {
+    // Open file for reading
+    H5::H5File file(filename, H5F_ACC_RDONLY);
+
+    // Load n_mut_indexed
+    {
+      H5::DataSet dataset = file.openDataSet("n_mut_indexed");
+      dataset.read(&n_mut_indexed, H5::PredType::NATIVE_INT);
+    }
+
+    // Load n_leaves
+    {
+      H5::DataSet dataset = file.openDataSet("n_leaves");
+      dataset.read(&n_leaves, H5::PredType::NATIVE_INT);
+    }
+
+    // Load allele_frequencies
+    {
+      H5::DataSet dataset = file.openDataSet("allele_frequencies");
+      H5::DataSpace dataspace = dataset.getSpace();
+      hsize_t dim;
+      dataspace.getSimpleExtentDims(&dim, nullptr);
+      allele_frequencies.resize(dim);
+      if(dim > 0)
+        dataset.read(allele_frequencies.data(), H5::PredType::NATIVE_DOUBLE);
+    }
+
+    // Helper lambda to load a vector of vectors of int from a flattened dataset and its sizes.
+    auto loadVectorVector = [&file](std::vector<std::vector<int>> &data, const std::string &baseName) {
+      // Open the flat dataset and sizes dataset.
+      H5::DataSet flat_dataset = file.openDataSet((baseName + "_flat").c_str());
+      H5::DataSet sizes_dataset = file.openDataSet((baseName + "_sizes").c_str());
+
+      // Read the sizes array.
+      H5::DataSpace sizes_space = sizes_dataset.getSpace();
+      hsize_t num_sizes;
+      sizes_space.getSimpleExtentDims(&num_sizes, nullptr);
+      std::vector<int> sizes(num_sizes);
+      if(num_sizes > 0)
+        sizes_dataset.read(sizes.data(), H5::PredType::NATIVE_INT);
+
+      // Read the flattened array.
+      H5::DataSpace flat_space = flat_dataset.getSpace();
+      hsize_t flat_dim;
+      flat_space.getSimpleExtentDims(&flat_dim, nullptr);
+      std::vector<int> flat(flat_dim);
+      if(flat_dim > 0)
+        flat_dataset.read(flat.data(), H5::PredType::NATIVE_INT);
+
+      // Reconstruct the vector-of-vectors.
+      data.clear();
+      size_t offset = 0;
+      for (size_t i = 0; i < sizes.size(); ++i) {
+        std::vector<int> temp(flat.begin() + offset, flat.begin() + offset + sizes[i]);
+        data.push_back(temp);
+        offset += sizes[i];
+      }
+    };
+
+    loadVectorVector(mut_topo_desc_to_anc, "mut_topo_desc_to_anc");
+    loadVectorVector(mut_topo_anc_to_desc, "mut_topo_anc_to_desc");
+    loadVectorVector(mut_set_id_to_muts, "mut_set_id_to_muts");
+    loadVectorVector(indiv_to_mut_set_id, "indiv_to_mut_set_id");
+    loadVectorVector(mut_set_id_to_indiv, "mut_set_id_to_indiv");
+
+    // Load mut_set_topo_order_leaf_to_root
+    {
+      H5::DataSet dataset = file.openDataSet("mut_set_topo_order_leaf_to_root");
+      H5::DataSpace dataspace = dataset.getSpace();
+      hsize_t dim;
+      dataspace.getSimpleExtentDims(&dim, nullptr);
+      mut_set_topo_order_leaf_to_root.resize(dim);
+      if(dim > 0)
+        dataset.read(mut_set_topo_order_leaf_to_root.data(), H5::PredType::NATIVE_INT);
+    }
+  }
+  catch (H5::Exception &e) {
+    std::cerr << "HDF5 Exception during load: " << e.getDetailMsg() << std::endl;
+    throw;
+  }
 }
