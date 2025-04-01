@@ -1,0 +1,3 @@
+[submodule "3rd_party/spectra"]
+	path = 3rd_party/spectra
+	url = https://github.com/yixuan/spectra.git
