@@ -178,7 +178,8 @@ Eigen::MatrixXd ARGMatMult::left_mult(
     }
   }
 
-  auto t1 = std::chrono::high_resolution_clock::now();
+  // auto t1 = std::chrono::high_resolution_clock::now();
+
   // initialise the results starting from the leaves
   // for (const auto& entry : indiv_to_mut_set_id) {
   //   int indv_id = diploid ? entry.first / 2 : entry.first;
@@ -201,11 +202,11 @@ Eigen::MatrixXd ARGMatMult::left_mult(
       partial_result.col(ms_id) += in_mat.col(diploid? indv/2 : indv);
     }
   }
-  auto t2 = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  // auto t2 = std::chrono::high_resolution_clock::now();
+  // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
   // std::cout << "init build time " << duration.count() / 1000.0 << " s" << std::endl;
 
-  t1 = std::chrono::high_resolution_clock::now();
+  // t1 = std::chrono::high_resolution_clock::now();
   // traverse upwards
   for (auto mut_set_id : mut_set_topo_order_leaf_to_root) {
     Eigen::VectorXd temp_result = Eigen::VectorXd::Zero(in_mat.rows());
@@ -219,19 +220,19 @@ Eigen::MatrixXd ARGMatMult::left_mult(
     // }
     partial_result.col(mut_set_id) += temp_result;
   }
-  t2 = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  // t2 = std::chrono::high_resolution_clock::now();
+  // duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
   // std::cout << "traverse time " << duration.count() / 1000.0 << " s" << std::endl;
 
-  t1 = std::chrono::high_resolution_clock::now();
+  // t1 = std::chrono::high_resolution_clock::now();
   for (int i=0; i!= mut_set_id_to_muts.size(); i++) {
     auto res = partial_result.col(i);
     for (int m_id : mut_set_id_to_muts[i]) {
       result.col(m_id) = res;
     }
   }
-  t2 = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  // t2 = std::chrono::high_resolution_clock::now();
+  // duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
   // std::cout << "assign time " << duration.count() / 1000.0 << " s" << std::endl;
 
   // postprocessing and deal with normalisation
@@ -331,39 +332,55 @@ Eigen::MatrixXd ARGMatMult::right_mult(
 }
 
 // Save the ARGMatMult data to an HDF5 file.
-void ARGMatMult::save_hdf5(const std::string &filename) 
+void ARGMatMult::save_hdf5(const std::string &filename, bool compress) 
 {
   try {
     // Open file for writing (overwrite if exists)
     H5::H5File file(filename, H5F_ACC_TRUNC);
 
-    // Save n_mut_indexed
+    // Helper lambda to create a dataset, optionally with compression.
+    auto createDataset = [&file, compress](const std::string &dsetName, H5::DataSpace &dataspace, const H5::PredType &type) -> H5::DataSet {
+      if (compress) {
+        hsize_t dims;
+        dataspace.getSimpleExtentDims(&dims, nullptr);
+        // Use a chunk size equal to the full dimension (or at least 1)
+        hsize_t chunk_dim = (dims > 0) ? dims : 1;
+        H5::DSetCreatPropList plist;
+        plist.setChunk(1, &chunk_dim);
+        plist.setDeflate(9);  // Maximum compression level.
+        return file.createDataSet(dsetName, type, dataspace, plist);
+      } else {
+        return file.createDataSet(dsetName, type, dataspace);
+      }
+    };
+
+    // Save n_mut_indexed.
     {
       hsize_t dim = 1;
       H5::DataSpace dataspace(1, &dim);
-      H5::DataSet dataset = file.createDataSet("n_mut_indexed", H5::PredType::NATIVE_INT, dataspace);
+      H5::DataSet dataset = createDataset("n_mut_indexed", dataspace, H5::PredType::NATIVE_INT);
       dataset.write(&n_mut_indexed, H5::PredType::NATIVE_INT);
     }
 
-    // Save n_leaves
+    // Save n_leaves.
     {
       hsize_t dim = 1;
       H5::DataSpace dataspace(1, &dim);
-      H5::DataSet dataset = file.createDataSet("n_leaves", H5::PredType::NATIVE_INT, dataspace);
+      H5::DataSet dataset = createDataset("n_leaves", dataspace, H5::PredType::NATIVE_INT);
       dataset.write(&n_leaves, H5::PredType::NATIVE_INT);
     }
 
-    // Save allele_frequencies (as a 1D double array)
+    // Save allele_frequencies as a 1D double array.
     {
       hsize_t dim = allele_frequencies.size();
       H5::DataSpace dataspace(1, &dim);
-      H5::DataSet dataset = file.createDataSet("allele_frequencies", H5::PredType::NATIVE_DOUBLE, dataspace);
+      H5::DataSet dataset = createDataset("allele_frequencies", dataspace, H5::PredType::NATIVE_DOUBLE);
       if(dim > 0)
         dataset.write(allele_frequencies.data(), H5::PredType::NATIVE_DOUBLE);
     }
 
-    // Helper lambda to save a vector of vectors of int as a flattened 1D array with auxiliary sizes.
-    auto saveVectorVector = [&file](const std::vector<std::vector<int>> &data, const std::string &baseName) {
+    // Helper lambda to save a vector-of-vectors of int as a flattened 1D array with an auxiliary sizes array.
+    auto saveVectorVector = [&file, &createDataset](const std::vector<std::vector<int>> &data, const std::string &baseName) {
       std::vector<int> sizes;
       std::vector<int> flat;
       for (const auto &vec : data) {
@@ -371,17 +388,17 @@ void ARGMatMult::save_hdf5(const std::string &filename)
         flat.insert(flat.end(), vec.begin(), vec.end());
       }
 
-      // Save the flattened array.
+      // Save the flattened data.
       hsize_t flat_dim = flat.size();
       H5::DataSpace flat_space(1, &flat_dim);
-      H5::DataSet flat_dataset = file.createDataSet((baseName + "_flat").c_str(), H5::PredType::NATIVE_INT, flat_space);
+      H5::DataSet flat_dataset = createDataset(baseName + "_flat", flat_space, H5::PredType::NATIVE_INT);
       if(flat_dim > 0)
         flat_dataset.write(flat.data(), H5::PredType::NATIVE_INT);
 
       // Save the sizes array.
       hsize_t sizes_dim = sizes.size();
       H5::DataSpace sizes_space(1, &sizes_dim);
-      H5::DataSet sizes_dataset = file.createDataSet((baseName + "_sizes").c_str(), H5::PredType::NATIVE_INT, sizes_space);
+      H5::DataSet sizes_dataset = createDataset(baseName + "_sizes", sizes_space, H5::PredType::NATIVE_INT);
       if(sizes_dim > 0)
         sizes_dataset.write(sizes.data(), H5::PredType::NATIVE_INT);
     };
@@ -392,11 +409,11 @@ void ARGMatMult::save_hdf5(const std::string &filename)
     saveVectorVector(indiv_to_mut_set_id, "indiv_to_mut_set_id");
     saveVectorVector(mut_set_id_to_indiv, "mut_set_id_to_indiv");
 
-    // Save the one-dimensional vector: mut_set_topo_order_leaf_to_root
+    // Save the one-dimensional vector: mut_set_topo_order_leaf_to_root.
     {
       hsize_t dim = mut_set_topo_order_leaf_to_root.size();
       H5::DataSpace dataspace(1, &dim);
-      H5::DataSet dataset = file.createDataSet("mut_set_topo_order_leaf_to_root", H5::PredType::NATIVE_INT, dataspace);
+      H5::DataSet dataset = createDataset("mut_set_topo_order_leaf_to_root", dataspace, H5::PredType::NATIVE_INT);
       if(dim > 0)
         dataset.write(mut_set_topo_order_leaf_to_root.data(), H5::PredType::NATIVE_INT);
     }

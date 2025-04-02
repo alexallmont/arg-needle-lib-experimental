@@ -60,7 +60,7 @@ public:
   Eigen::MatrixXd right_mult(const Eigen::MatrixXd& in_mat, bool standardize_mut=true, arg_real_t alpha=-1, bool diploid=true);
 
 
-  void save_hdf5(const std::string &filename) ;
+  void save_hdf5(const std::string &filename, bool compress = false) ;
   void load_hdf5(const std::string &filename) ;
 
 };
