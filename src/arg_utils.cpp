@@ -3959,6 +3959,11 @@ void write_branches(const ARG& arg, string file_root) {
 }
 
 void prepare_fast_multiplication(ARG &arg) {
+
+  if (arg.roots.empty()) {
+    throw std::logic_error(THROW_LINE("Call populate_children_and_roots() first."));
+  }
+  
   // required for traversal
   arg.populate_mutations_on_edges();
 

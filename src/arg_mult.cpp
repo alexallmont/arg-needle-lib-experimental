@@ -299,7 +299,7 @@ Eigen::MatrixXd ARGMatMult::right_mult(
   }
   auto t2 = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-  std::cout << "traverse time " << duration.count() / 1000.0 << " s" << std::endl;
+  // std::cout << "traverse time " << duration.count() / 1000.0 << " s" << std::endl;
 
   t1 = std::chrono::high_resolution_clock::now();
   // finish with the individuals
@@ -315,7 +315,7 @@ Eigen::MatrixXd ARGMatMult::right_mult(
   }
   t2 = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-  std::cout << "assign time " << duration.count() / 1000.0 << " s" << std::endl;
+  // std::cout << "assign time " << duration.count() / 1000.0 << " s" << std::endl;
 
   // postprocessing with normalisation
   if (standardize_mut) {
