@@ -1,7 +1,7 @@
 /*
   This file is part of the ARG-Needle genealogical inference and
   analysis software suite.
-  Copyright (C) 2023 ARG-Needle Developers.
+  Copyright (C) 2023-2025 ARG-Needle Developers.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -84,6 +84,16 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
             return starts;
           },
           "Returns a sorted list of parent starts")
+      .def(
+          "child_edges_at",
+          [](ARGNode& node, arg_real_t position) {
+            std::vector<ARGEdge> edges;
+            for (auto edge : node.children_at(position)) {
+              edges.push_back(*edge);
+            }
+            return edges;
+          },
+          py::arg("position"))
       .def("__repr__", [](const ARGNode& node) {
         std::ostringstream oss;
         oss << node;
@@ -117,7 +127,8 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
       .def_readonly("edge", &Mutation::edge)
       .def_readonly("position", &Mutation::position)
       .def_readonly("height", &Mutation::height)
-      .def_readonly("site_id", &Mutation::site_id);
+      .def_readonly("site_id", &Mutation::site_id)
+      .def("get_midpoint_height", &Mutation::get_midpoint_height);
 
   py::class_<Site>(m, "Site")
       .def("get_mutations", &Site::get_mutations, py::return_value_policy::reference_internal)
@@ -532,8 +543,7 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
               return arg_utils::most_recent_common_ancestor(arg, desc, position);
           },
           py::return_value_policy::reference, py::arg("arg"), py::arg("descendants"), py::arg("position"),
-          "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");
-          
+          "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");          
     m.def("prepare_fast_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"));
     m.def("ARG_by_matrix_multiply_muts_fast", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
         py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
@@ -557,4 +567,10 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
     m.def("weighted_mut_squared_norm", &arg_utils::weighted_mut_squared_norm, py::arg("arg"), py::arg("weights"), py::arg("centre"));
     m.def("association_mutation_fast", &arg_utils::association_mutation_fast, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
     m.def("association_mutation_fast_hwe", &arg_utils::association_mutation_fast_hwe, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
+
+    // serialize_arg: ARG serialization to HDF5
+    m.def("validate_serialized_arg", &arg_utils::validate_serialized_arg, py::arg("file_name"),
+        "Validates the integrity of a serialized ARG file.");
+    m.def("deserialize_arg", &arg_utils::deserialize_arg, py::arg("file_name"), py::arg("chunk_size") = 1000,
+        py::arg("reserved_samples") = -1, "Deserialize ARG from HDF5 file.");
 }

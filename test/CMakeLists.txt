@@ -1,6 +1,6 @@
 # This file is part of the ARG-Needle genealogical inference and
 # analysis software suite.
-# Copyright (C) 2023 ARG-Needle Developers.
+# Copyright (C) 2023-2025 ARG-Needle Developers.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ set(
         test_src
         test_arg.cpp
         test_arg_utils.cpp
+        test_mutation.cpp
         test_serialize_arg.cpp
         test_simple.cpp
         test_structure.cpp

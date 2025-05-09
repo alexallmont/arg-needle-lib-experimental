@@ -1,7 +1,7 @@
 /*
   This file is part of the ARG-Needle genealogical inference and
   analysis software suite.
-  Copyright (C) 2023 ARG-Needle Developers.
+  Copyright (C) 2023-2025 ARG-Needle Developers.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -90,4 +90,13 @@ TEST_CASE("Deserialize ARG")
   const ARG from_arg_file = arg_utils::deserialize_arg(valid_arg);
 
   CHECK(from_arg_file.num_nodes() == 50);
+}
+
+TEST_CASE("Deserialize ARG with mutations")
+{
+  const std::string valid_arg = ARG_NEEDLE_TESTDATA_DIR "/test_serialize_arg/valid_with_mutations.arg";
+  const ARG from_arg_file = arg_utils::deserialize_arg(valid_arg);
+
+  CHECK(from_arg_file.num_nodes() == 50);
+  CHECK(from_arg_file.num_mutations() == 89);
 }

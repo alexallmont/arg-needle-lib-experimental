@@ -1,6 +1,6 @@
 # This file is part of the ARG-Needle genealogical inference and
 # analysis software suite.
-# Copyright (C) 2023 ARG-Needle Developers.
+# Copyright (C) 2023-2025 ARG-Needle Developers.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -250,6 +250,6 @@ def test_validation():
     assert not arg_needle_lib.validate_serialized_arg('valid_hdf5_invalid_arg')
 
     # Tidy up files on disk
-    # pathlib.Path('valid.arg').unlink()
-    # pathlib.Path('valid_file_invalid_hdf5').unlink()
-    # pathlib.Path('valid_hdf5_invalid_arg').unlink()
+    pathlib.Path('valid.arg').unlink()
+    pathlib.Path('valid_file_invalid_hdf5').unlink()
+    pathlib.Path('valid_hdf5_invalid_arg').unlink()

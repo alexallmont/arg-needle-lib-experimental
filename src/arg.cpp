@@ -1,7 +1,7 @@
 /*
   This file is part of the ARG-Needle genealogical inference and
   analysis software suite.
-  Copyright (C) 2023 ARG-Needle Developers.
+  Copyright (C) 2023-2025 ARG-Needle Developers.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -233,8 +233,8 @@ void ARG::deserialize_add_nodes(const std::vector<double>& node_heights,
   }
 }
 
-void ARG::deserialize_add_edges(const std::vector<std::vector<int>>& edge_ids,
-                                const std::vector<std::vector<arg_real_t>>& edge_ranges) {
+void ARG::deserialize_add_edges(const std::vector<std::array<int, 2>>& edge_ids,
+                                const std::vector<std::array<double, 2>>& edge_ranges) {
 
   if (edge_ids.size() != edge_ranges.size() || edge_ids.empty()) {
     throw std::logic_error(THROW_LINE("Expected non-zero & same number of edge ids and ranges"));
@@ -263,7 +263,7 @@ void ARG::deserialize_add_edges(const std::vector<std::vector<int>>& edge_ids,
 void ARG::deserialize_add_mutations(const std::vector<arg_real_t>& positions,
                                     const std::vector<arg_real_t>& heights,
                                     const std::vector<int>& site_ids,
-                                    const std::vector<std::vector<int>>& edge_ids) {
+                                    const std::vector<std::array<int, 2>>& edge_ids) {
 
   if (positions.size() != heights.size() || positions.size() != site_ids.size() ||
       positions.size() != edge_ids.size()) {
@@ -297,7 +297,7 @@ void ARG::deserialize_add_mutations(const std::vector<arg_real_t>& positions,
 
     const bool valid_id = edge_ptr->parent->ID == parent->ID;
     const bool valid_pos = edge_ptr->start <= this_pos && edge_ptr->end > this_pos;
-    const bool valid_height = child->height <= this_height && parent->height > this_height;
+    const bool valid_height = this_height == -1.0 || (child->height <= this_height && parent->height > this_height);
 
     if (!valid_id || !valid_pos || !valid_height) {
       throw std::logic_error(THROW_LINE("Could not find correct edge for serialized mutation."));

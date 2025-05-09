@@ -1,7 +1,7 @@
 /*
   This file is part of the ARG-Needle genealogical inference and
   analysis software suite.
-  Copyright (C) 2023 ARG-Needle Developers.
+  Copyright (C) 2023-2025 ARG-Needle Developers.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -170,9 +170,9 @@ ARG trim_arg(ARG& arg, arg_real_t trim_start, arg_real_t trim_end) {
     throw std::logic_error(THROW_LINE("trim start is after trim end"));
   }
   vector<int> node_is_in_range(arg.num_nodes(), 0);
-  vector<vector<int>> edge_ids;
+  vector<std::array<int, 2>> edge_ids;
   edge_ids.reserve(arg.num_edges());
-  vector<vector<arg_real_t>> edge_ranges;
+  vector<std::array<double, 2>> edge_ranges;
   edge_ranges.reserve(arg.num_edges());
 
   for (auto const& map_entry : arg.arg_nodes) {
@@ -183,8 +183,8 @@ ARG trim_arg(ARG& arg, arg_real_t trim_start, arg_real_t trim_end) {
         auto edge = node_map_entry.second.get();
         // a node is in range iff it has in range edges
         if (edge->start < trim_end && edge->end > trim_start) {
-          vector<int> edge_id{edge->child->ID, edge->parent->ID};
-          vector<arg_real_t> edge_range{std::max(edge->start - trim_start, arg_real_t(0)),
+          std::array<int, 2> edge_id{edge->child->ID, edge->parent->ID};
+          std::array<double, 2> edge_range{std::max(edge->start - trim_start, arg_real_t(0)),
                                         std::min(edge->end, trim_end) - trim_start};
           node_is_in_range[edge->child->ID] = 1;
           node_is_in_range[edge->parent->ID] = 1;
@@ -209,7 +209,7 @@ ARG trim_arg(ARG& arg, arg_real_t trim_start, arg_real_t trim_end) {
   for (auto& elem : edge_ids) {
     int new_child_id = reassigned_node_id[elem[0]];
     int new_parent_id = reassigned_node_id[elem[1]];
-    vector<int> new_ids{new_child_id, new_parent_id};
+    std::array<int, 2> new_ids{new_child_id, new_parent_id};
     elem = new_ids;
   }
 
@@ -254,7 +254,7 @@ ARG trim_arg(ARG& arg, arg_real_t trim_start, arg_real_t trim_end) {
     positions.reserve(arg.get_num_sites());
     vector<arg_real_t> heights;
     heights.reserve(arg.get_num_sites());
-    vector<vector<int>> mutation_edge_ids;
+    vector<std::array<int, 2>> mutation_edge_ids;
     mutation_edge_ids.reserve(arg.get_num_sites());
 
     for (auto const& entry : arg.get_mutations()) {
@@ -263,8 +263,8 @@ ARG trim_arg(ARG& arg, arg_real_t trim_start, arg_real_t trim_end) {
         num_sites_in_range++;
         positions.emplace_back(mutation->position - trim_start);
         heights.emplace_back(mutation->height);
-        vector<int> mutation_edge_id{reassigned_node_id[mutation->edge->child->ID],
-                                     reassigned_node_id[mutation->edge->parent->ID]};
+        std::array<int, 2> mutation_edge_id{
+            reassigned_node_id[mutation->edge->child->ID], reassigned_node_id[mutation->edge->parent->ID]};
         mutation_edge_ids.emplace_back(mutation_edge_id);
       }
     }
@@ -792,7 +792,7 @@ MatXui get_mutations_matrix(const ARG& arg, arg_real_t from_pos, arg_real_t to_p
         // also setting min_time = 0, max_time = std::numeric_limits<double>::infinity()
         // to access last two optional parameters
       },
-      0, std::numeric_limits<double>::infinity(), index_start, index_end);
+      -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), index_start, index_end);
   return mat;
 }
 

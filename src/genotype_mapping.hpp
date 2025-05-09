@@ -1,7 +1,7 @@
 /*
   This file is part of the ARG-Needle genealogical inference and
   analysis software suite.
-  Copyright (C) 2023 ARG-Needle Developers.
+  Copyright (C) 2023-2025 ARG-Needle Developers.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -86,9 +86,9 @@ void map_genotypes_to_ARG(ARG& arg, const MatXui& genotypes, const std::vector<a
  *
  * @details The function first checks if the ARG has been properly initialized with roots. It then processes the diploid
  * genotype to identify homozygous and heterozygous carriers. For each homozygous carrier, it locates the highest edge
- * in the ARG associated with the mutation and updates the ARG by adding the mutation. The function then processes
- * heterozygous carriers, determining the appropriate edge for mutation placement by comparing the number of carriers or
- * the height difference between parent and child nodes.
+ * in the ARG associated with the mutation and updates the ARG by adding the mutation. The function then greedily
+ * processes heterozygous carriers, determining the appropriate edge for mutation placement by comparing the number of
+ * carriers or the height difference between parent and child nodes.
  */
 void map_genotype_to_ARG_diploid(ARG& arg, const std::vector<int>& genotype, arg_real_t pos);
 

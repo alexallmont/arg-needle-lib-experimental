@@ -1,7 +1,7 @@
 /*
   This file is part of the ARG-Needle genealogical inference and
   analysis software suite.
-  Copyright (C) 2023 ARG-Needle Developers.
+  Copyright (C) 2023-2025 ARG-Needle Developers.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -50,6 +50,18 @@ bool check_dataset(const H5::H5File& h5_file, const std::string& expected_dset)
     return true;
   } catch (const H5::Exception&) {
     std::cerr << "Expected file " << h5_file.getFileName() << " to include dataset `" << expected_dset << "`"
+              << std::endl;
+    return false;
+  }
+}
+
+bool check_group(const H5::H5File& h5_file, const std::string& expected_group)
+{
+  try {
+    auto group = h5_file.openGroup(expected_group);
+    return true;
+  } catch (const H5::Exception&) {
+    std::cerr << "Expected file " << h5_file.getFileName() << " to include group `" << expected_group << "`"
               << std::endl;
     return false;
   }
@@ -232,8 +244,12 @@ bool validate_serialized_arg_v2(const H5::H5File& h5_file)
   // Expected attributes and datasets
   std::vector<std::string> expected_attrs = {"num_nodes", "num_edges", "node_bounds", "num_mutations", "mutations",
       "offset", "chromosome", "start", "end", "threaded_samples", "datetime_created", "arg_file_version"};
+
   std::vector<std::string> expected_dsets = {"flags", "times", "edge_ranges", "edge_ids"};
-  std::vector<std::string> optional_dsets = {"mutations", "node_bounds"};
+  std::vector<std::string> optional_dsets = {"node_bounds"};
+
+  std::vector<std::string> expected_groups = {};
+  std::vector<std::string> optional_groups = {"mutations"};
 
   bool is_valid = true;
 
@@ -250,6 +266,17 @@ bool validate_serialized_arg_v2(const H5::H5File& h5_file)
 
   for (const auto& dset : expected_dsets) {
     is_valid = check_dataset(h5_file, dset);
+  }
+
+  // The existence of optional groups is also marked by bool attributes of the same name
+  for (const auto& group_name : optional_groups) {
+    if (read_bool_attribute(h5_file, group_name)) {
+      expected_groups.emplace_back(group_name);
+    }
+  }
+
+  for (const auto& group : expected_groups) {
+    is_valid = check_group(h5_file, group);
   }
 
   return is_valid;
@@ -314,25 +341,67 @@ ARG deserialize_arg_v2(const H5::H5File& h5_file, const int chunk_size, const in
   ARG arg(dp);
 
   // Process {chunk_size} nodes at a time, adding each chunk to the ARG as we go
-  const auto num_nodes = static_cast<hssize_t>(dp.num_nodes);
-  hssize_t num_nodes_written = 0;
+  {
+    const auto num_nodes = static_cast<hssize_t>(dp.num_nodes);
+    hssize_t num_nodes_written = 0;
 
-  while (num_nodes_written < num_nodes){
-    const hssize_t range_lo = num_nodes_written;
-    const hssize_t range_hi = std::min(num_nodes_written + chunk_size, num_nodes);
+    while (num_nodes_written < num_nodes) {
+      const hssize_t range_lo = num_nodes_written;
+      const hssize_t range_hi = std::min(num_nodes_written + chunk_size, num_nodes);
 
-    const std::vector<double> node_heights = read_dataset_to_vector_1d<double>(h5_file, "times", range_lo, range_hi);
-    const std::vector<uint8_t> is_sample = read_dataset_to_vector_1d<uint8_t>(h5_file, "flags", range_lo, range_hi);
+      const auto node_heights = read_dataset_to_vector_1d<double>(h5_file, "times", range_lo, range_hi);
+      const auto is_sample = read_dataset_to_vector_1d<uint8_t>(h5_file, "flags", range_lo, range_hi);
 
-    if (read_bool_attribute(h5_file, "node_bounds"))
-    {
-      const std::vector<std::array<double, 2>> node_bounds_data = read_dataset_to_vector_2d<double>(h5_file, "node_bounds", range_lo, range_hi);
-      arg.deserialize_add_nodes(node_heights, is_sample, node_bounds_data);
-    } else {
-      arg.deserialize_add_nodes(node_heights, is_sample);
+      if (read_bool_attribute(h5_file, "node_bounds")) {
+        const auto node_bounds_data = read_dataset_to_vector_2d<double>(h5_file, "node_bounds", range_lo, range_hi);
+        arg.deserialize_add_nodes(node_heights, is_sample, node_bounds_data);
+      } else {
+        arg.deserialize_add_nodes(node_heights, is_sample);
+      }
+
+      num_nodes_written += static_cast<hssize_t>(node_heights.size());
     }
+  }
 
-    num_nodes_written += static_cast<hssize_t>(node_heights.size());
+  // Process {chunk_size} edges at a time, adding each chunk to the ARG as we go
+  {
+    const auto num_edges = static_cast<hssize_t>(read_int_attribute(h5_file, "num_edges"));
+    hssize_t num_edges_written = 0;
+
+    while (num_edges_written < num_edges) {
+
+      const hssize_t range_lo = num_edges_written;
+      const hssize_t range_hi = std::min(num_edges_written + chunk_size, num_edges);
+
+      const auto edge_id_data = read_dataset_to_vector_2d<int>(h5_file, "edge_ids", range_lo, range_hi);
+      const auto edge_range_data = read_dataset_to_vector_2d<double>(h5_file, "edge_ranges", range_lo, range_hi);
+
+      arg.deserialize_add_edges(edge_id_data, edge_range_data);
+
+      num_edges_written += static_cast<hssize_t>(edge_id_data.size());
+    }
+  }
+
+  // Process {chunk_size} mutations at a time, adding each chunk to the ARG as we go
+  if (read_bool_attribute(h5_file, "mutations")) {
+
+    const auto num_mutations = static_cast<hssize_t>(read_int_attribute(h5_file, "num_mutations"));
+    hssize_t num_mutations_written = 0;
+
+    while (num_mutations_written < num_mutations) {
+
+      const hssize_t range_lo = num_mutations_written;
+      const hssize_t range_hi = std::min(num_mutations_written + chunk_size, num_mutations);
+
+      const auto mut_pos = read_dataset_to_vector_1d<double>(h5_file, "mutations/positions", range_lo, range_hi);
+      const auto mut_hts = read_dataset_to_vector_1d<double>(h5_file, "mutations/heights", range_lo, range_hi);
+      const auto mut_sid = read_dataset_to_vector_1d<int>(h5_file, "mutations/site_ids", range_lo, range_hi);
+      const auto mut_eid = read_dataset_to_vector_2d<int>(h5_file, "mutations/edge_ids", range_lo, range_hi);
+
+      arg.deserialize_add_mutations(mut_pos, mut_hts, mut_sid, mut_eid);
+
+      num_mutations_written += static_cast<hssize_t>(mut_pos.size());
+    }
   }
 
   return arg;

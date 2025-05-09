@@ -26,7 +26,6 @@ python3 -m venv venv
 source venv/bin/activate
 
 pip install --upgrade pip setuptools wheel
-pip install cmake ninja
 pip install .
 ```
 
@@ -75,11 +74,14 @@ or an example:
 
 ## For developers: making a release
 
-- Bump the version number in [setup.py](setup.py), [CMakeLists.txt](CMakeLists.txt), and [docs/conf.py](docs/conf.py)
+- Bump the version number in [pyproject.toml](pyproject.toml), [CMakeLists.txt](CMakeLists.txt), and [docs/conf.py](docs/conf.py)
 - Update [RELEASE_NOTES.md](RELEASE_NOTES.md)
 - Push changes and check that all [GitHub workflows](https://github.com/PalamaraLab/arg_needle_lib/actions) pass
 - Tag the commit in Git using syntax `vX.Y.Z`
 - Make a release on GitHub, which should trigger a new build that will upload Python wheels to PyPI
+- If building wheels for a new Python version:
+  - Update classifiers in [pyproject.toml](pyproject.toml)
+  - Check whether version of `pypa/cibuildwheel` needs updating in [build-wheels.yml](.github/workflows/build-wheels.yml)
 
 ## License
 

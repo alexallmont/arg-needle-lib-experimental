@@ -1,7 +1,7 @@
 /*
   This file is part of the ARG-Needle genealogical inference and
   analysis software suite.
-  Copyright (C) 2023 ARG-Needle Developers.
+  Copyright (C) 2023-2025 ARG-Needle Developers.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -344,9 +344,9 @@ void visit_clades(const ARG& arg, VisitOp clade_visit_op, arg_real_t min_positio
 //     index_end negative value means visit all mutations after index_start
 //
 template <typename VisitOp>
-void visit_mutations(const ARG& arg, VisitOp mutation_visit_op, arg_real_t min_time = 0.,
-                     arg_real_t max_time = std::numeric_limits<double>::infinity(), int index_start = 0,
-                     int index_end = -1)
+void visit_mutations(const ARG& arg, VisitOp mutation_visit_op,
+    arg_real_t min_time = -std::numeric_limits<double>::infinity(),
+    arg_real_t max_time = std::numeric_limits<double>::infinity(), int index_start = 0, int index_end = -1)
 {
   if (arg.roots.empty()) {
     throw std::logic_error(THROW_LINE("Call populate_children_and_roots() first."));

@@ -1,7 +1,7 @@
 /*
   This file is part of the ARG-Needle genealogical inference and
   analysis software suite.
-  Copyright (C) 2023 ARG-Needle Developers.
+  Copyright (C) 2023-2025 ARG-Needle Developers.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -191,8 +191,8 @@ public:
      * @brief add a chunk of edges during deserialization
      *
      */
-    void deserialize_add_edges(const std::vector<std::vector<int>>& edge_ids,
-                               const std::vector<std::vector<arg_real_t>>& edge_ranges);
+    void deserialize_add_edges(const std::vector<std::array<int, 2>>& edge_ids,
+                               const std::vector<std::array<double, 2>>& edge_ranges);
 
     /**
      * @brief add a chunk of mutations during deserialization
@@ -201,7 +201,7 @@ public:
     void deserialize_add_mutations(const std::vector<arg_real_t>& positions,
                                    const std::vector<arg_real_t>& heights,
                                    const std::vector<int>& site_ids,
-                                   const std::vector<std::vector<int>>& edge_ids);
+                                   const std::vector<std::array<int, 2>>& edge_ids);
 
     /**
      * @brief get map between positions and sites, updating that map if necessary

@@ -1,6 +1,6 @@
 # This file is part of the ARG-Needle genealogical inference and
 # analysis software suite.
-# Copyright (C) 2023 ARG-Needle Developers.
+# Copyright (C) 2023-2025 ARG-Needle Developers.
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,12 @@ cmake_minimum_required(VERSION 3.16)
 message(STATUS "Using CMake version ${CMAKE_VERSION}")
 cmake_policy(VERSION 3.16)
 
-project(arg_needle_lib LANGUAGES CXX VERSION 1.0.2)
+project(arg_needle_lib LANGUAGES CXX VERSION 1.1.3)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(PYBIND11_NEWPYTHON ON)
 
 # Project settings including default build type
 include(cmake/ProjectSettings.cmake)
@@ -51,7 +52,8 @@ if (PYTHON_BINDINGS)
     FetchContent_Declare(
             pybind11
             GIT_REPOSITORY https://github.com/pybind/pybind11
-            GIT_TAG 941f45b # Version 2.13.1
+            GIT_TAG 7c33cdc2d39c7b99a122579f53bc94c8eb3332ff # Version 2.13.5
+
     )
     FetchContent_GetProperties(pybind11)
     if (NOT pybind11_POPULATED)
@@ -105,9 +107,9 @@ else ()
 endif ()
 
 # Python testing targets
-find_package (Python3 3.7 COMPONENTS Interpreter)
+find_package (Python3 3.9 COMPONENTS Interpreter)
 if (NOT Python3_Interpreter_FOUND)
-    message(STATUS "Python 3.7+ interpreter not found.")
+    message(STATUS "Python 3.9+ interpreter not found.")
 else ()
     message(STATUS "Python ${Python3_VERSION} interpreter found: ${Python3_EXECUTABLE}")
     set (BIG_PYTHON_TEST ${CMAKE_SOURCE_DIR}/test/test_big_args.py)

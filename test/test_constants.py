@@ -16,27 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Utilities for examples.
-"""
+from arg_needle_lib import ANL_NODE_IS_SAMPLE, ANL_NODE_IS_NOT_SAMPLE
 
-from contextlib import contextmanager
-import time
+def test_constant_values_and_types():
 
-# https://docs.python.org/3/library/time.html#time.perf_counter
-# See https://stackoverflow.com/a/64401876/
-default_timer = time.perf_counter
+    assert isinstance(ANL_NODE_IS_SAMPLE, int)
+    assert isinstance(ANL_NODE_IS_NOT_SAMPLE, int)
 
-@contextmanager
-def time_and_print(description=None):
-    """Times a block of code and prints after finishing.
-
-    Inspired by https://stackoverflow.com/a/30024601.
-    """
-    start = default_timer()
-    yield
-    end = default_timer()
-    time_in_seconds = end - start
-    if description is None or description == "":
-        print(f"Time elapsed (seconds): {time_in_seconds}")
-    else:
-        print(f"Time to {description} (seconds): {time_in_seconds}")
+    assert ANL_NODE_IS_SAMPLE == 1
+    assert ANL_NODE_IS_NOT_SAMPLE == 0
