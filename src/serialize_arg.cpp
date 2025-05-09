@@ -581,17 +581,17 @@ ARG arg_utils::deserialize_arg_cpp(const std::string& file_path, const arg_real_
       }
       vector<int> node_is_in_range(attr_num_nodes, 0);
       arg_real_t expected_num_edges = (arg_real_t (attr_num_edges)) * (trim_end - trim_start)/attr_sequence_length;
-      vector<vector<int>> edge_ids_trimmed;
+      vector<std::array<int, 2UL>> edge_ids_trimmed;
       edge_ids_trimmed.reserve(int (expected_num_edges));
-      vector<vector<arg_real_t>> edge_ranges_trimmed;
+      vector<std::array<arg_real_t, 2UL>> edge_ranges_trimmed;
       edge_ranges_trimmed.reserve(int (expected_num_edges));
 
       for (int edge_id = 0; edge_id < edge_ranges_paired.size(); edge_id++) {
         auto const& edge_start = edge_ranges_paired.at(edge_id).first;
         auto const& edge_end = edge_ranges_paired.at(edge_id).second;
         if (edge_start < trim_end && edge_end > trim_start) {
-          vector<arg_real_t> edge_range{std::max(edge_start - trim_start, arg_real_t(0)), std::min(edge_end, trim_end) - trim_start};
-          vector<int> edge_ids{edge_ids_paired.at(edge_id).first, edge_ids_paired.at(edge_id).second};
+          std::array<arg_real_t, 2UL> edge_range{std::max(edge_start - trim_start, arg_real_t(0)), std::min(edge_end, trim_end) - trim_start};
+          std::array<int, 2UL> edge_ids{edge_ids_paired.at(edge_id).first, edge_ids_paired.at(edge_id).second};
           node_is_in_range[edge_ids_paired.at(edge_id).first] = 1;
           node_is_in_range[edge_ids_paired.at(edge_id).second] = 1;
           edge_ids_trimmed.emplace_back(edge_ids);
@@ -611,7 +611,7 @@ ARG arg_utils::deserialize_arg_cpp(const std::string& file_path, const arg_real_
       for (auto& elem : edge_ids_trimmed) {
         int new_child_id = reassigned_node_id[elem[0]];
         int new_parent_id = reassigned_node_id[elem[1]];
-        vector<int> new_ids{new_child_id, new_parent_id};
+        std::array<int, 2UL> new_ids{new_child_id, new_parent_id};
         elem = new_ids;
       }
 
