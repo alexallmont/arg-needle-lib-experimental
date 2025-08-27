@@ -512,32 +512,101 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
           },
           py::return_value_policy::reference, py::arg("arg"), py::arg("descendants"), py::arg("position"),
           "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");          
-    m.def("prepare_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"));
-    m.def("ARG_by_matrix_multiply_muts", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
-        py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-        py::arg("start_pos") = 0, py::arg("end_pos") = std::numeric_limits<double>::infinity(),
-        "Multiply each existing ARG mutation by a sample-by-k matrix");
-    m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing_mut_fast_mt, py::arg("arg"),
-        py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-        py::arg("n_threads") = 1, "Multiply each existing ARG mutation by a sample-by-k matrix with multi-threading");
-    m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_faster, py::arg("arg"),
-        py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true,
-        py::arg("start_pos") = 0., py::arg("end_pos") = std::numeric_limits<double>::infinity(),
-        "Multiply each sample by a mutations-by-k matrix");
-    m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_samples_faster_mt, py::arg("arg"),
-        py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-        py::arg("n_threads") = 1, "Multiply each sample by a mutations-by-k matrix with multi-threading");
-    m.def("deserialize_arg_cpp", &arg_utils::deserialize_arg_cpp, py::arg("file_name"), py::arg("trim_start") = 0.,
-        py::arg("trim_end") = std::numeric_limits<arg_real_t>::max(),
-        py::arg("truncation_height") = std::numeric_limits<arg_real_t>::max(),
-        "deserialize an arg and either trim or truncate at the same time");
-    m.def("weighted_mut_squared_norm", &arg_utils::weighted_mut_squared_norm, py::arg("arg"), py::arg("weights"), py::arg("centre"));
-    m.def("association_mutation", &arg_utils::association_mutation_fast, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
-    m.def("association_mutation_hwe", &arg_utils::association_mutation_fast_hwe, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
+    m.def("prepare_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"),
+    R"pbdoc(
+        Prepare ARG for fast matrix multiplication operations.
+        
+        Args:
+            arg: ARG object to prepare for multiplication
+    )pbdoc");
 
-    // serialize_arg: ARG serialization to HDF5
-    m.def("validate_serialized_arg", &arg_utils::validate_serialized_arg, py::arg("file_name"),
-        "Validates the integrity of a serialized ARG file.");
-    m.def("deserialize_arg", &arg_utils::deserialize_arg, py::arg("file_name"), py::arg("chunk_size") = 1000,
-        py::arg("reserved_samples") = -1, "Deserialize ARG from HDF5 file.");
+m.def("ARG_by_matrix_multiply_muts", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
+    py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+    py::arg("start_pos") = 0, py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+    R"pbdoc(
+        Multiply the genotype matrix on the ARG by a k-by-sample matrix.
+
+        Args:
+            arg: ARG object containing mutations
+            matrix: k-by-sample numpy matrix to multiply with mutations
+            standardize: Whether to standardize mutations before multiplication (default: False)
+            alpha: Parameter controlling standardization behavior (default: 0)
+            diploid: Whether to treat samples as diploid (default: False) 
+            start_pos: Start position to consider mutations from (default: 0)
+            end_pos: End position to consider mutations to (default: infinity)
+
+        Returns:
+            A k-by-mutations matrix from multiplying the provided input with the genotype matrix
+    )pbdoc");
+
+m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing_mut_fast_mt, py::arg("arg"),
+    py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+    py::arg("n_threads") = 1,
+    R"pbdoc(
+        Multiply the genotype matrix on the ARG by a k-by-sample matrix using multiple threads.
+
+        Args:
+            arg: ARG object containing mutations
+            matrix: k-by-sample numpy matrix to multiply with mutations
+            standardize: Whether to standardize mutations before multiplication (default: False)
+            alpha: Parameter controlling standardization behavior (default: 0)
+            diploid: Whether to treat samples as diploid (default: False)
+            n_threads: Number of threads to use (default: 1)
+
+        Returns:
+            A k-by-mutations matrix from multiplying the provided input with the genotype matrix
+    )pbdoc");
+
+m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_faster, py::arg("arg"),
+    py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true,
+    py::arg("start_pos") = 0., py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+    R"pbdoc(
+        Multiply each sample by a mutations-by-k matrix.
+
+        Args:
+            arg: ARG object containing samples
+            matrix: Mutations-by-k numpy matrix to multiply with samples
+            standardize: Whether to standardize mutations before multiplication (default: False)
+            alpha: Parameter controlling standardization behavior (default: 0)
+            diploid: Whether to treat samples as diploid (default: True)
+            start_pos: Start position to consider mutations from (default: 0)
+            end_pos: End position to consider mutations to (default: infinity)
+
+        Returns:
+            A sample-by-k matrix from multiplying the genotype matrix with the provided input
+    )pbdoc");
+
+m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_samples_faster_mt, py::arg("arg"),
+    py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+    py::arg("n_threads") = 1,
+    R"pbdoc(
+        Multiply each sample by a mutations-by-k matrix using multiple threads.
+
+        Args:
+            arg: ARG object containing samples
+            matrix: Mutations-by-k numpy matrix to multiply with samples  
+            standardize: Whether to standardize mutations before multiplication (default: False)
+            alpha: Parameter controlling standardization behavior (default: 0)
+            diploid: Whether to treat samples as diploid (default: False)
+            n_threads: Number of threads to use (default: 1)
+
+        Returns:
+            A sample-by-k matrix from multiplying the genotype matrix with the provided input
+    )pbdoc");
+
+m.def("deserialize_arg_cpp", &arg_utils::deserialize_arg_cpp, py::arg("file_name"), py::arg("trim_start") = 0.,
+    py::arg("trim_end") = std::numeric_limits<arg_real_t>::max(),
+    py::arg("truncation_height") = std::numeric_limits<arg_real_t>::max(),
+    R"pbdoc(
+        Deserialize an ARG and optionally trim or truncate it.
+
+        Args:
+            file_name: Path to the serialized ARG file
+            trim_start: Start position to trim ARG from (default: 0)
+            trim_end: End position to trim ARG to (default: max float)
+            truncation_height: Maximum height to truncate ARG at (default: max float)
+
+        Returns:
+            Deserialized ARG object, optionally trimmed or truncated
+    )pbdoc");
 }
