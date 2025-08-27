@@ -29,11 +29,9 @@ find_package(HDF5 COMPONENTS CXX REQUIRED)
 
 set(
         arg_needle_lib_src
-        alstructure.cpp
         ancestor_entry.cpp
         arg.cpp
         arg_edge.cpp
-        arg_mult.cpp
         arg_node.cpp
         arg_utils.cpp
         constants.cpp
@@ -50,11 +48,9 @@ set(
 
 set(
         arg_needle_lib_hdr
-        alstructure.hpp
         ancestor_entry.hpp
         arg.hpp
         arg_edge.hpp
-        arg_mult.hpp
         arg_node.hpp
         arg_utils.hpp
         constants.hpp

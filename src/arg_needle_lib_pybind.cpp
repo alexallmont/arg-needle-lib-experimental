@@ -269,36 +269,6 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
       .def_static("print_threshold", &DescendantList::print_threshold, "Print threshold");
 
 
-  py::class_<ALSoptions>(m, "ALSoptions")
-      .def(py::init<>(), "Constructor for ALSoptions")
-      .def_readwrite("max_iter", &ALSoptions::max_iterations, "Maximum number of iterations")
-      .def_readwrite("debug", &ALSoptions::debugmode, "Debug flag")
-      .def_readwrite("tol", &ALSoptions::convergence_limit, "Convergence limit")
-      .def_readwrite("random_state", &ALSoptions::seed, "Random seed to initialise P")
-      .def_readwrite("write_to_file", &ALSoptions::write_to_file, "Flag for writing file to disk")
-      .def_readwrite("output_path", &ALSoptions::OUTPUT_PATH, "Output path for matrices")
-      .def_readwrite("n_components", &ALSoptions::num_of_evec, "Number of components")
-      .def_readwrite("n_threads", &ALSoptions::n_threads, "Number of compute threads");
-  py::class_<ALStructure>(m, "ALStructure")
-      .def(py::init<std::vector<ARG*>, ALSoptions>(), "Load ARGs to perform ALStructure type decomposition", py::arg("ARG_list"), py::arg("options") = ALSoptions())
-      .def_readwrite("options", &ALStructure::opts, "Options for ALStructure algorithm")
-      .def_readwrite("D", &ALStructure::D, "Vector for diagonal D in LSE")
-      .def_readwrite("als_V", &ALStructure::V, "V matrix in truncated ALStructure")
-      .def_readwrite("Phat", &ALStructure::Phat, "P matrix estimated by ALStructure")
-      .def_readwrite("Qhat", &ALStructure::Qhat, "Q matrix estimated by ALStructure")
-      .def("fit_ALS", &ALStructure::fit_ALS, "Fit ALStructure model", py::call_guard<py::scoped_ostream_redirect, py::scoped_estream_redirect>());
-  py::class_<ARGMatMult>(m, "ARGMatMult")
-      .def(py::init<ARG&>(), "Load ARG to perform fast ARG-mat multiplication", py::arg("ARG"))
-      .def(py::init<>(), "Default empty constructor")
-      .def_readwrite("allele_frequencies", &ARGMatMult::allele_frequencies, "allele frequency used to normalise genotypes")
-      .def_readwrite("n_mutations", &ARGMatMult::n_mut_indexed, "number of indexed mutations")
-      .def_readwrite("n_samples", &ARGMatMult::n_leaves, "number of indexed leaf nodes")
-      .def("load_arg", &ARGMatMult::load_arg, py::arg("ARG"))
-      .def("right_multiply", &ARGMatMult::right_mult, py::arg("in_mat"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true)
-      .def("left_multiply", &ARGMatMult::left_mult, py::arg("in_mat"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true)
-      .def("save_hdf5", &ARGMatMult::save_hdf5, py::arg("path"), py::arg("compress") = false, "save mutation data to hdf5")
-      .def("load_hdf5", &ARGMatMult::load_hdf5, py::arg("path"), "load mutation data from hdf5");
-
   // arg_utils: general ARG querying
   m.def("arg_to_newick", &arg_utils::arg_to_newick, py::arg("arg"), py::arg("verbose") = false,
         "Return a Newick representation of an ARG, `verbose` includes branch lengths");
@@ -544,29 +514,28 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
           },
           py::return_value_policy::reference, py::arg("arg"), py::arg("descendants"), py::arg("position"),
           "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");          
-    m.def("prepare_fast_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"));
-    m.def("ARG_by_matrix_multiply_muts_fast", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
+    m.def("prepare_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"));
+    m.def("ARG_by_matrix_multiply_muts", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
         py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
         py::arg("start_pos") = 0, py::arg("end_pos") = std::numeric_limits<double>::infinity(),
         "Multiply each existing ARG mutation by a sample-by-k matrix");
-    m.def("ARG_by_matrix_multiply_muts_fast_mt", &arg_utils::ARG_matrix_multiply_existing_mut_fast_mt, py::arg("arg"),
+    m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing_mut_fast_mt, py::arg("arg"),
         py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
         py::arg("n_threads") = 1, "Multiply each existing ARG mutation by a sample-by-k matrix with multi-threading");
-    m.def("ARG_by_matrix_multiply_samples_faster", &arg_utils::ARG_matrix_multiply_samples_faster, py::arg("arg"),
+    m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_faster, py::arg("arg"),
         py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true,
         py::arg("start_pos") = 0., py::arg("end_pos") = std::numeric_limits<double>::infinity(),
         "Multiply each sample by a mutations-by-k matrix");
-    m.def("ARG_by_matrix_multiply_samples_faster_mt", &arg_utils::ARG_matrix_multiply_samples_faster_mt, py::arg("arg"),
+    m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_samples_faster_mt, py::arg("arg"),
         py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
         py::arg("n_threads") = 1, "Multiply each sample by a mutations-by-k matrix with multi-threading");
     m.def("deserialize_arg_cpp", &arg_utils::deserialize_arg_cpp, py::arg("file_name"), py::arg("trim_start") = 0.,
         py::arg("trim_end") = std::numeric_limits<arg_real_t>::max(),
         py::arg("truncation_height") = std::numeric_limits<arg_real_t>::max(),
         "deserialize an arg and either trim or truncate at the same time");
-    m.def("ARG_grm_matmul", &arg_utils::ARG_grm_matmul, py::arg("arg"), py::arg("input_mat"), py::arg("diploid"));
     m.def("weighted_mut_squared_norm", &arg_utils::weighted_mut_squared_norm, py::arg("arg"), py::arg("weights"), py::arg("centre"));
-    m.def("association_mutation_fast", &arg_utils::association_mutation_fast, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
-    m.def("association_mutation_fast_hwe", &arg_utils::association_mutation_fast_hwe, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
+    m.def("association_mutation", &arg_utils::association_mutation_fast, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
+    m.def("association_mutation_hwe", &arg_utils::association_mutation_fast_hwe, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference);
 
     // serialize_arg: ARG serialization to HDF5
     m.def("validate_serialized_arg", &arg_utils::validate_serialized_arg, py::arg("file_name"),
