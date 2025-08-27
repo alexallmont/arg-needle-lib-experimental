@@ -19,7 +19,6 @@
 
 #include "arg.hpp"
 #include "arg_edge.hpp"
-#include "arg_mult.hpp"
 #include "arg_node.hpp"
 #include "arg_utils.hpp"
 #include "descendant_list.hpp"
@@ -30,7 +29,6 @@
 #include "serialize_arg.hpp"
 #include "site.hpp"
 #include "types.hpp"
-#include "alstructure.hpp"
 
 #include <pybind11/eigen.h>
 #include <pybind11/iostream.h>
