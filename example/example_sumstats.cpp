@@ -45,43 +45,19 @@ using std::unordered_set;
 using std::vector;
 
 int main(int argc, char* argv[]) {
-  // ARG arg = arg_utils::deserialize_arg_cpp("/gpfs3/well/palamara/users/ray826/fastmult_arg/single-chunk-test/args/neGBR_n1e+05_l30e6.argn");
-  auto t1 = std::chrono::high_resolution_clock::now();
-  ARG arg = arg_utils::deserialize_arg_cpp("/gpfs3/well/palamara/users/ray826/fastmult_arg/geno-grm-generated/args/chr4.from52684820.to190906015.chunk7-8.split.0.0.to.12261607.0.argn");
+  ARG arg = arg_utils::deserialize_arg_cpp("/gpfs3/well/palamara/users/ray826/fastmult_arg/single-chunk-test/args/neGBR_n1e+05_l30e6.argn");
 
-  auto t2 = std::chrono::high_resolution_clock::now();
-  auto time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-  std::cout << "read in took " << time_span.count() << " seconds." << endl;
-
-  t1 = std::chrono::high_resolution_clock::now();
   arg.populate_children_and_roots();
 
-  t2 = std::chrono::high_resolution_clock::now();
-  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-  std::cout << "pop children took " << time_span.count() << " seconds." << endl;
-
-  t1 = std::chrono::high_resolution_clock::now();
   arg_utils::generate_mutations(arg, 1e-10, 18);
 
   cout << "generated " << arg.num_mutations() << " mutations" << endl;
 
-  t2 = std::chrono::high_resolution_clock::now();
-  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-  std::cout << "gen muts took " << time_span.count() << " seconds." << endl;
-
-  t1 = std::chrono::high_resolution_clock::now();
   arg_utils::prepare_fast_multiplication(arg);
 
-  t2 = std::chrono::high_resolution_clock::now();
-  time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-  std::cout << "prep mult took " << time_span.count() << " seconds." << endl;
-  // arg.populate_mutations_on_edges();
+  Eigen::MatrixXd rand_pheno = Eigen::MatrixXd::Random(arg.leaf_ids.size()/2, 20);
 
-  // Eigen::MatrixXd rand_pheno = Eigen::MatrixXd::Random(arg.leaf_ids.size()/2, 20);
-
-  // // auto result = arg_utils::association_mutation_fast(arg, rand_pheno);
-  // auto result = arg_utils::weighted_mut_squared_norm(arg, Eigen::MatrixXd::Random(arg.leaf_ids.size()/2, 7), true);
-
+  auto result = arg_utils::weighted_mut_squared_norm(arg, Eigen::MatrixXd::Random(arg.leaf_ids.size()/2, 7), true);
 
   return 0;
 }

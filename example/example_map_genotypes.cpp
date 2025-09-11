@@ -46,66 +46,42 @@ using std::vector;
 
 int main(int argc, char* argv[])
 {
-  // string directory = ARG_NEEDLE_TESTDATA_DIR "/length_5e4_samples_2e4/";
+  string directory = ARG_NEEDLE_TESTDATA_DIR "/length_5e4_samples_2e4/";
 
-  // ARG arg = arg_utils::arg_from_ts_files(directory + "nodes.txt", directory + "edges.txt");
-  // ARG arg = arg_utils::deserialize_arg_cpp("/gpfs3/well/palamara/users/ray826/arg_needle_lib_dev/test.argn");
-  std::ifstream inputFile("/gpfs3/well/palamara/users/ray826/arg_needle_lib_dev/geno_test_loc_154401679.txt");
-
-  std::vector<int> geno;
-  std::string line;
-  int geno_sum = 0;
-  while (std::getline(inputFile, line)) {
-      try {
-          int number = std::stoi(line);
-          geno.push_back(number);
-          geno_sum += number;
-      } catch (const std::invalid_argument& e) {
-          std::cerr << "Invalid number in file: " << line << std::endl;
-      } catch (const std::out_of_range& e) {
-          std::cerr << "Number out of range in file: " << line << std::endl;
-      }
-  }
-
-  inputFile.close();
-
-  std::cout << "total carriers " << geno_sum << std::endl;
-
-  ARG arg = arg_utils::deserialize_arg_cpp("/well/palamara/users/awo066/TDPBWT/experiments/huge_imputation_arg/results_v2/args/chr1.from143199864.to249222527.chunk1-2.argn", 154401678 - 144021214, 154401680 - 144021214);
+  ARG arg = arg_utils::arg_from_ts_files(directory + "nodes.txt", directory + "edges.txt");
   arg.populate_children_and_roots();
   DescendantList::set_threshold(64);
   // arg.check_basic(false);
   cout << arg.arg_nodes.size() << " nodes, " << arg.get_breakpoints().size() << " trees" << endl;
   cout << arg.arg_nodes.size() << " nodes, " << arg.num_edges() << " edges" << endl;
 
-  arg_utils::map_genotype_to_ARG(arg, geno, 154401679 - arg.offset);
 
-  // // auto bits = arg_utils::get_bitset(arg.arg_nodes.at(1296387).get(), arg.leaf_ids.size(), 339.85263061523438);
-  // std::size_t k = 10;
-  // Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> matrix = Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>::Zero(k, arg.leaf_ids.size());
+  // auto bits = arg_utils::get_bitset(arg.arg_nodes.at(1296387).get(), arg.leaf_ids.size(), 339.85263061523438);
+  std::size_t k = 10;
+  Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> matrix = Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>::Zero(k, arg.leaf_ids.size());
 
-  // // Seed for random number generator
-  // std::srand(std::time(0));
+  // Seed for random number generator
+  std::srand(std::time(0));
 
-  // // Fill the matrix with random 0s and 1s
-  // for (int i = 0; i < k; ++i) {
-  //   for (int j = 0; j < arg.leaf_ids.size(); ++j) {
-  //     if (std::rand() % 2000) matrix(i, j) = 0;
-  //     else matrix(i, j) = 1;
-  //   }
-  // }
+  // Fill the matrix with random 0s and 1s
+  for (int i = 0; i < k; ++i) {
+    for (int j = 0; j < arg.leaf_ids.size(); ++j) {
+      if (std::rand() % 2000) matrix(i, j) = 0;
+      else matrix(i, j) = 1;
+    }
+  }
 
-  // std::vector<double> positions(k);
+  std::vector<double> positions(k);
 
-  // for (int i = 0; i < k; ++i) {
-  //   float randomValue = 0 + static_cast<double>(std::rand()) / (static_cast<double>(RAND_MAX / (5e4 - 0)));
-  //   positions[i] = randomValue;
-  // }
+  for (int i = 0; i < k; ++i) {
+    float randomValue = 0 + static_cast<double>(std::rand()) / (static_cast<double>(RAND_MAX / (5e4 - 0)));
+    positions[i] = randomValue;
+  }
 
-  // // Sort the vector
-  // std::sort(positions.begin(), positions.end());
+  // Sort the vector
+  std::sort(positions.begin(), positions.end());
 
-  // arg_utils::map_genotypes_to_ARG(arg, matrix, positions, 1);
+  arg_utils::map_genotypes_to_ARG(arg, matrix, positions, 1);
 
   return 0;
 }
