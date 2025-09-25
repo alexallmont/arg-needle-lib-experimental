@@ -557,7 +557,7 @@ m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing
             A k-by-mutations matrix from multiplying the provided input with the genotype matrix
     )pbdoc");
 
-m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_faster, py::arg("arg"),
+m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_fast, py::arg("arg"),
     py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true,
     py::arg("start_pos") = 0., py::arg("end_pos") = std::numeric_limits<double>::infinity(),
     R"pbdoc(
@@ -567,7 +567,7 @@ m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_
             arg: ARG object containing samples
             matrix: Mutations-by-k numpy matrix to multiply with samples
             standardize: Whether to standardize mutations before multiplication (default: False)
-            alpha: Parameter controlling standardization behavior (default: 0)
+            alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
             diploid: Whether to treat samples as diploid (default: True)
             start_pos: Start position to consider mutations from (default: 0)
             end_pos: End position to consider mutations to (default: infinity)
@@ -576,7 +576,7 @@ m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_
             A sample-by-k matrix from multiplying the genotype matrix with the provided input
     )pbdoc");
 
-m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_samples_faster_mt, py::arg("arg"),
+m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_samples_fast_mt, py::arg("arg"),
     py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
     py::arg("n_threads") = 1,
     R"pbdoc(
@@ -586,7 +586,7 @@ m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_sampl
             arg: ARG object containing samples
             matrix: Mutations-by-k numpy matrix to multiply with samples  
             standardize: Whether to standardize mutations before multiplication (default: False)
-            alpha: Parameter controlling standardization behavior (default: 0)
+            alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
             diploid: Whether to treat samples as diploid (default: False)
             n_threads: Number of threads to use (default: 1)
 

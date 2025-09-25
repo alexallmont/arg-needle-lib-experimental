@@ -1403,7 +1403,6 @@ void ARG::keep_mutations_within_maf(arg_real_t min_maf, arg_real_t max_maf, bool
     arg_real_t af = fast_multiplication_data.allele_frequencies[i];
     arg_real_t maf = af/leaf_ids.size();
     if ((min_maf <= maf && maf <= max_maf) || (min_maf <= (1-maf) && (1-maf) <= max_maf)) {
-      // std::cout << "id=" << i << ", maf = " << maf << "; ";
       filtered_muts.push_back(std::move(mutations.at(i)));
     }
   }

@@ -506,7 +506,7 @@ ARG arg_utils::deserialize_arg_cpp(const std::string& file_path, const arg_real_
         .read(H5::PredType::NATIVE_INT, &attr_arg_file_version);
 
     if (attr_arg_file_version == 2) {
-      // std::cerr << "Version 2 is not yet fully supported. \n";
+      std::cerr << "Version 2 is not yet fully supported. \n";
     }
 
     arg_archive_file.openAttribute("num_nodes").read(H5::PredType::NATIVE_INT, &attr_num_nodes);
@@ -650,14 +650,6 @@ ARG arg_utils::deserialize_arg_cpp(const std::string& file_path, const arg_real_
 
     }
 
-    // std::vector<std::pair<int, int>> first_ten_ids(edge_ids_paired.begin()+ 10000,
-    // edge_ids_paired.begin() + 10010); for(const auto& id : first_ten_ids) {
-    //   std::cout << id.first << "," << id.second << '\n';
-    // }
-    // std::vector<std::pair<arg_real_t, arg_real_t>> first_ten_ranges(edge_ranges_paired.begin()+
-    // 10000, edge_ranges_paired.begin() + 10010); for(const auto& range : first_ten_ranges) {
-    //   std::cout << range.first << ", " << range.second <<  '\n';
-    // }
     // begin truncation rewrite
     ARG_data arg_data;
     arg_data.node_heights = node_heights;
@@ -755,16 +747,6 @@ arg_utils::ARG_data arg_utils::truncate_arg_data(ARG_data& arg_data, arg_real_t 
       truncated_is_sample_deque.emplace_back(0);
     }
 
-    // std::cout << "done inserting " << split_edge_endpoints.size() - 1 << " new root nodes" << std::endl;
-    // std::cout << "root split at ";
-    // for (auto split : split_edge_endpoints) {
-    //   std::cout << split << ", ";
-    // }
-    // std::cout << std::endl;
-
-    // connect children nodes of truncated edges to the corresponding root nodes
-    // // first convert endpoints into vector so we have constant time indexing
-    // std::vector<arg_real_t> split_points(split_edge_endpoints.begin(), split_edge_endpoints.end());
     for (auto i = 0u; i < arg_data.edge_ids_paired.size(); i++) {
       int child_node_idx = arg_data.edge_ids_paired[i].first;
       int parent_node_idx = arg_data.edge_ids_paired[i].second;
@@ -790,7 +772,6 @@ arg_utils::ARG_data arg_utils::truncate_arg_data(ARG_data& arg_data, arg_real_t 
           offset_it--;
           int current_top_node_idx = new_node_index + top_node_idx_offset + offset;
           truncated_edge_ids_paired.emplace_back(old_to_new_node_id[child_node_idx], current_top_node_idx);
-          // std::cout << "adding edge from " << old_to_new_node_id[child_node_idx] << " to " << current_top_node_idx << " with range " << current_edge_start << " to " << current_edge_end << " offset " << offset << " org start, end: " << edge_start << ", " << edge_end << std::endl;
           truncated_edge_ranges_paired.emplace_back(current_edge_start, current_edge_end);
           offset++;
         }

@@ -44,13 +44,11 @@ std::vector<std::tuple<ARGEdge*, arg_real_t>> map_genotype_to_ARG_internal(
 
   ARGEdge* edge;
   DescendantList current_carriers(num_leaves);
-  std::cout << "total carriers " << carriers.num_values() << std::endl;
   while (carriers.num_values() > 0) {
     const int leaf_id = carriers.peek();
     std::tie(edge, current_carriers) = arg_utils::highest_carrier_edge(arg, leaf_id, carriers, pos);
     mutations_to_add.emplace_back(edge, pos);
     carriers.erase(current_carriers);
-    std::cout << "remaining carriers " << carriers.num_values() << std::endl;
   }
 
   return mutations_to_add;

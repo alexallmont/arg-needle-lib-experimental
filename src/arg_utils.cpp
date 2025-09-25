@@ -2021,26 +2021,6 @@ vector<tuple<int, arg_real_t, DescendantList>> stab_return_all_bitsets(const ARG
   return result;
 }
 
-// // Return the DescendantList subtending a node at a given position
-// // This currently uses recursion but can change to postorder using stacks
-// DescendantList get_bitset(const ARGNode* node, int n, arg_real_t position) {
-//   // Get the children of the particular node
-//   vector<ARGEdge*> children_edges = node->children_at(position);
-//   if (children_edges.size() == 0) {
-//     assert(node->ID < n);
-//     return DescendantList(n, node->ID);
-//   }
-//   DescendantList desc_list(n);
-//   for (const ARGEdge* child_edge : children_edges) {
-//     const ARGNode* child = child_edge->child;
-
-//     DescendantList child_desc_list = get_bitset(child, n, position);
-//     // Add in the descendent list of the child (recursive traversal)
-//     desc_list.add(child_desc_list);
-//   }
-//   return (desc_list);
-// }
-
 DescendantList get_bitset(const ARGNode* node, int n, arg_real_t position) {
 
   std::deque<const ARGNode*> deque_to_visit;
@@ -4161,14 +4141,14 @@ void prepare_fast_multiplication(ARG &arg) {
 // as this is only used in multithreading in such a way to avoid splitting the matrix 
 // and reindexing mutations unnecessarily
 Eigen::MatrixXd
-ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat,
+ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
                                  bool standardize_mut, arg_real_t alpha, bool diploid,
                                  arg_real_t start_pos, arg_real_t end_pos) {
   
   size_t num_samples = arg.leaf_ids.size();
   unsigned int num_mutations = arg.num_mutations();
   unsigned int k = in_mat.cols();
-  auto in_mat_transposed = in_mat.transpose().eval(); // TODO: is this taking too much memory?
+  auto in_mat_transposed = in_mat.transpose().eval(); 
   if (diploid) {
     assert(num_samples % 2 == 0);
     num_samples /= 2;
@@ -4177,9 +4157,6 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
     cout << "Mutations are " << arg.get_site_positions().size() << " but vector size is " << in_mat.rows() << endl;
     throw std::runtime_error(THROW_LINE("Mismatching mutations and matrix row sizes"));
   }
-  // if (arg.fast_multiplication_data.node_to_eigen_cache_id.size() == 0) {
-  //     throw std::runtime_error(THROW_LINE("Empty index data. Run prepare_fast_multiplication(arg) first."));
-  // }
   if (arg.fast_multiplication_data.allele_frequencies.size() != arg.get_site_positions().size()) {
       throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run prepare_fast_multiplication(arg)."));
   }
@@ -4199,7 +4176,6 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
       continue;
     
     auto &node_parents = arg.arg_nodes.at(node_id)->parents;
-    // std::cout << "\nconsidering node id " << node_id << " ";
 
     // we restrict the split position to the start and end positions
     // but since split positions might not perfectly align with start and end, we do this roughly
@@ -4220,7 +4196,6 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
       split_it++;
       auto interval_right = *split_it;
       split_it--;
-      // std::cout << "[" << interval_left << ", " << interval_right << ") ";
       auto first_parent_edge_it = node_parents.upper_bound(interval_left);
       if (first_parent_edge_it != node_parents.begin()) first_parent_edge_it--;
 
@@ -4228,17 +4203,11 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
 
       // no need for this back track because last_parent_edge_it now points to the first edge *not* to be included.
 
-      // if (first_parent_edge_it != node_parents.end()) {
-      //   // std::cout << first_parent_edge_it->second->start << " bounding " << interval_left << std::endl;
-      //   // assert(first_parent_edge_it->second->start <= interval_left);
-      // }
       Eigen::VectorXd this_interval_result = Eigen::VectorXd::Zero(k);
-
 
       // sum up parent results for this interval
       for (auto parent_it = first_parent_edge_it; parent_it != last_parent_edge_it; parent_it++)
       {
-        // std::cout << "edge: from " << parent_it->second->start << " to " << parent_it->second->end << std::endl;
         // filter for only in-range edges...
         if (parent_it->second->end <= interval_left) continue;
         if (parent_it->second->end <= start_pos) continue;
@@ -4248,12 +4217,10 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
         // add results from mutations on this very edge
         if (parent_it->second->mutations)
         {
-          // std::cout << " here " << std::endl;
           for (auto *mut : *parent_it->second->mutations)
           {
             if (interval_left <= mut->position && mut->position < interval_right &&
                 start_pos <= mut->position && mut->position < end_pos ) {
-            // if (parent_it->second->start <= mut->position && mut->position < parent_it->second->end) {
             if (!standardize_mut)
             this_interval_result += in_mat_transposed.col(arg.fast_multiplication_data.pos_to_mut_id.at(mut->position));
             else {
@@ -4261,10 +4228,6 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
             // arg_real_t std = std::sqrt(2 * mean * (1 - mean));
             this_interval_result += std::pow(2 * mean * (1 - mean), alpha / 2.) * in_mat_transposed.col(arg.fast_multiplication_data.pos_to_mut_id.at(mut->position));
           }
-            // std::cout << "mut at " << mut->position << " is in (" << interval_left << ", " << interval_right << ")" << std::endl;
-            }
-            else {
-              // std::cout << "mut at " << mut->position << " is outside (" << interval_left << ", " << interval_right << ")" << std::endl;
             }
           }
         }
@@ -4278,22 +4241,16 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
             assert(result_begin_it->first >= parent_it->second->start);
           }
           auto result_end_it = node_interval_results.at(parent_it->second->parent->ID).lower_bound(std::min(interval_right, parent_it->second->end));
-          // std::cout << ", min " << interval_right << ", " << parent_it->second->end << " } ";
-          // if (result_end_it != node_interval_results.at(parent_it->second->parent->ID).end()) {
-          //   assert(result_end_it->first >= parent_it->second->end);
-          // }
           // summing up...
           for (auto result_it = result_begin_it; result_it != result_end_it; result_it++)
           {
             this_interval_result += result_it->second;
           }
-          // std::cout << "= " << this_interval_result;
         }
       }
       if (this_interval_result != Eigen::VectorXd::Zero(k) || arg.is_leaf(node_id))
       {
         node_interval_results.at(node_id).emplace(interval_left, this_interval_result);
-        // std::cout << this_interval_result << std::endl;
       }
     }
   }
@@ -4310,9 +4267,6 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
     auto last_mut_id = (--arg.fast_multiplication_data.pos_to_mut_id.upper_bound(end_pos))->second;
     auto offset = in_mat_transposed.middleCols(first_mut_id, last_mut_id-first_mut_id+1) * mean_vec.matrix().middleRows(first_mut_id, last_mut_id-first_mut_id+1);
     output.colwise() -= offset;
-    // Eigen::ArrayXd mean_vec = arg.fast_multiplication_data.allele_frequencies / arg.leaf_ids.size();
-    // Eigen::ArrayXd std = (2 * mean_vec * (1. - mean_vec)).pow(alpha / 2.);
-    // output.colwise() -= (std * mean_vec).matrix() * in_mat;
   }
   return output.transpose();
 }
@@ -4324,7 +4278,7 @@ ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& in_mat
 // alpha: will mean center and multiply by std^alpha
 // this is a multi-threaded version that spawns threads calling the previous single-threaded function
 
-Eigen::MatrixXd ARG_matrix_multiply_samples_faster_mt(const ARG& arg, const Eigen::MatrixXd& mat,
+Eigen::MatrixXd ARG_matrix_multiply_samples_fast_mt(const ARG& arg, const Eigen::MatrixXd& mat,
                             bool standardize_mut, arg_real_t alpha, bool diploid,
                             int n_threads) {
 
@@ -4341,7 +4295,7 @@ Eigen::MatrixXd ARG_matrix_multiply_samples_faster_mt(const ARG& arg, const Eige
     assert(end_pos <= arg.end);
     result_chunks.push_back(
         std::async(std::launch::async,
-                   arg_utils::ARG_matrix_multiply_samples_faster,
+                   arg_utils::ARG_matrix_multiply_samples_fast,
                    std::cref(arg), std::cref(mat), standardize_mut, alpha, diploid,
                    start_pos, end_pos));
   }
@@ -4361,10 +4315,6 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eige
                                                      bool standardize_mut, arg_real_t alpha,
                                                      bool diploid, arg_real_t start_pos, arg_real_t end_pos) {
   size_t n = arg.leaf_ids.size();
-  // Eigen::MatrixXd mat = in_mat.transpose();
-  // if (arg.fast_multiplication_data.node_to_eigen_cache_id.size() == 0) {
-  //     throw std::runtime_error(THROW_LINE("Empty index data. Run prepare_fast_multiplication(arg) first."));
-  // }
   if (arg.fast_multiplication_data.allele_frequencies.size() != arg.get_site_positions().size()) {
       throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run arg_needle_prepare_fast_multiplication(arg)."));
   }
@@ -4549,8 +4499,6 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast_mt(const ARG& arg, const E
   for (auto &fut : result_chunks) {
     auto this_chunk = fut.get();
     auto n_muts = this_chunk.cols();
-    // std::cout << col_offset << ", " << col_offset + n_muts << std::endl;
-    // std::cout << this_chunk.rows() << " x " << this_chunk.cols() << std::endl;
     final_out.middleCols(col_offset, n_muts) = this_chunk;
     col_offset += n_muts;
   }

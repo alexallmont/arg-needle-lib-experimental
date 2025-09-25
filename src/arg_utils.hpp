@@ -176,11 +176,11 @@ void write_branches(const ARG& arg, std::string file_root);
 void prepare_fast_multiplication(ARG &arg);
 
 Eigen::MatrixXd
-ARG_matrix_multiply_samples_faster(const ARG& arg, const Eigen::MatrixXd& mat,
+ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& mat,
                             bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true,
                             arg_real_t start_pos = 0., arg_real_t end_pos = std::numeric_limits<arg_real_t>::infinity());
 Eigen::MatrixXd
-ARG_matrix_multiply_samples_faster_mt(const ARG& arg, const Eigen::MatrixXd& mat,
+ARG_matrix_multiply_samples_fast_mt(const ARG& arg, const Eigen::MatrixXd& mat,
                             bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true,
                             int n_threads = 1);
 
