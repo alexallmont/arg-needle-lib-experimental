@@ -23,7 +23,6 @@
 #include "arg_edge.hpp"
 #include "arg_node.hpp"
 #include "arg_utils.hpp"
-#include "serialize_arg.hpp"
 #include "descendant_list.hpp"
 #include "random_utils.hpp"
 #include "types.hpp"

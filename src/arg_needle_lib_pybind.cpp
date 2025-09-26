@@ -26,7 +26,6 @@
 #include "genotype_mapping.hpp"
 #include "mutation.hpp"
 #include "root.hpp"
-#include "serialize_arg.hpp"
 #include "site.hpp"
 #include "types.hpp"
 
@@ -592,21 +591,5 @@ m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_sampl
 
         Returns:
             A sample-by-k matrix from multiplying the genotype matrix with the provided input
-    )pbdoc");
-
-m.def("deserialize_arg_cpp", &arg_utils::deserialize_arg_cpp, py::arg("file_name"), py::arg("trim_start") = 0.,
-    py::arg("trim_end") = std::numeric_limits<arg_real_t>::max(),
-    py::arg("truncation_height") = std::numeric_limits<arg_real_t>::max(),
-    R"pbdoc(
-        Deserialize an ARG and optionally trim or truncate it.
-
-        Args:
-            file_name: Path to the serialized ARG file
-            trim_start: Start position to trim ARG from (default: 0)
-            trim_end: End position to trim ARG to (default: max float)
-            truncation_height: Maximum height to truncate ARG at (default: max float)
-
-        Returns:
-            Deserialized ARG object, optionally trimmed or truncated
     )pbdoc");
 }

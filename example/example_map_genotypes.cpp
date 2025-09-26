@@ -26,7 +26,6 @@
 #include "descendant_list.hpp"
 #include "genotype_mapping.hpp"
 #include "random_utils.hpp"
-#include "serialize_arg.hpp"
 #include "types.hpp"
 #include "utils.hpp"
 
