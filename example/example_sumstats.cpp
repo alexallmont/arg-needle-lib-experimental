@@ -45,7 +45,12 @@ using std::unordered_set;
 using std::vector;
 
 int main(int argc, char* argv[]) {
-  ARG arg = arg_utils::deserialize_arg_cpp("/gpfs3/well/palamara/users/ray826/fastmult_arg/single-chunk-test/args/neGBR_n1e+05_l30e6.argn");
+
+  // Read in the ARG from a file
+  std::string directory = ARG_NEEDLE_TESTDATA_DIR "/length_1e6_samples_1e3";
+  ARG arg = arg_utils::arg_from_ts_files(directory + "nodes.txt", directory + "edges.txt");
+  arg.populate_children_and_roots();
+  cout << arg.arg_nodes.size() << " nodes, " << arg.get_breakpoints().size() << " trees" << endl;
 
   arg.populate_children_and_roots();
 
