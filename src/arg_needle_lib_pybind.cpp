@@ -529,7 +529,7 @@ m.def("ARG_by_matrix_multiply_muts", &arg_utils::ARG_matrix_multiply_existing_mu
             arg: ARG object containing mutations
             matrix: k-by-sample numpy matrix to multiply with mutations
             standardize: Whether to standardize mutations before multiplication (default: False)
-            alpha: Parameter controlling standardization behavior (default: 0)
+            alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
             diploid: Whether to treat samples as diploid (default: False) 
             start_pos: Start position to consider mutations from (default: 0)
             end_pos: End position to consider mutations to (default: infinity)
@@ -548,7 +548,7 @@ m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing
             arg: ARG object containing mutations
             matrix: k-by-sample numpy matrix to multiply with mutations
             standardize: Whether to standardize mutations before multiplication (default: False)
-            alpha: Parameter controlling standardization behavior (default: 0)
+            alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
             diploid: Whether to treat samples as diploid (default: False)
             n_threads: Number of threads to use (default: 1)
 
