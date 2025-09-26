@@ -28,8 +28,5 @@ target_link_libraries(example_node PRIVATE arg_needle_lib)
 add_executable(example_visit example_visit.cpp)
 target_link_libraries(example_visit PRIVATE arg_needle_lib)
 
-add_executable(example_map example_map_genotypes.cpp)
-target_link_libraries(example_map PRIVATE arg_needle_lib)
-
 add_executable(example_sumstats example_sumstats.cpp)
 target_link_libraries(example_sumstats PRIVATE arg_needle_lib)
