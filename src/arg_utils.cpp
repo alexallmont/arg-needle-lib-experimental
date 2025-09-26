@@ -3938,6 +3938,8 @@ void write_branches(const ARG& arg, string file_root) {
   info_out_fstream.close();
 }
 
+// build necessary information for arg traversal for multiplication
+
 void prepare_fast_multiplication(ARG &arg) {
 
   if (arg.roots.empty()) {
@@ -4225,7 +4227,6 @@ ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
             this_interval_result += in_mat_transposed.col(arg.fast_multiplication_data.pos_to_mut_id.at(mut->position));
             else {
             arg_real_t mean = arg.fast_multiplication_data.allele_frequencies[arg.fast_multiplication_data.pos_to_mut_id.at(mut->position)] / arg.leaf_ids.size();
-            // arg_real_t std = std::sqrt(2 * mean * (1 - mean));
             this_interval_result += std::pow(2 * mean * (1 - mean), alpha / 2.) * in_mat_transposed.col(arg.fast_multiplication_data.pos_to_mut_id.at(mut->position));
           }
             }
@@ -4236,7 +4237,6 @@ ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
         if (!node_interval_results.at(parent_it->second->parent->ID).empty())
         {
           auto result_begin_it = node_interval_results.at(parent_it->second->parent->ID).lower_bound(std::max(interval_left, parent_it->second->start));
-          // std::cout << "{ max " << interval_left << ", " << parent_it->second->start;
           if (result_begin_it != node_interval_results.at(parent_it->second->parent->ID).end()) {
             assert(result_begin_it->first >= parent_it->second->start);
           }
@@ -4424,8 +4424,6 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eige
       // It also expires if a new child edge enters
       // This code is not necessary for ARGs that consist only of binary trees,
       // but the Python test test_tsinfer_visit gives an example where it is necessary
-      // TODO: profile this bit, and if it's significant, we can optionally switch
-      // it off when working with binary trees.
       vector<ARGEdge*> child_edges_stretch = node->children_overlap(position, expire_position);
       for (const ARGEdge* child_edge_stretch : child_edges_stretch) {
         if (child_edge_stretch->start > position) {
@@ -4485,7 +4483,6 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast_mt(const ARG& arg, const E
   for (int i = 0; i < n_threads; i++) {
     auto start_pos = arg.start + (i * chunk_size);
     auto end_pos = arg.start + ((i + 1) * chunk_size);
-    assert(end_pos <= arg.end);
     result_chunks.push_back(
         std::async(std::launch::async,
                    arg_utils::ARG_matrix_multiply_existing_mut_fast,
@@ -4622,16 +4619,6 @@ Eigen::MatrixXd weighted_mut_squared_norm(const ARG& arg, const Eigen::MatrixXd&
   node_result_map.clear();
 
   return squared_norms;
-
-
-  // this is needed if we are dealing with remapped mutations... ignore for now
-
-  // // finally we add up the frequencies to account for variants represented by multiple mapped mutations
-  // Eigen::VectorXd merged_allele_freq = Eigen::VectorXd::Zero(pos_to_mut_id.size());
-  // auto& mut_vec = arg.get_mutations();
-  // for (int idx=0;idx<allele_freq.size();idx++){
-  //   merged_allele_freq[pos_to_mut_id.at(mut_vec.at(idx)->position)] += allele_freq[idx];
-  // }
 }
 
 std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutation_fast(const ARG& arg, const Eigen::MatrixXd& in_mat) {
@@ -4659,7 +4646,6 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
   // 2. bitset recording hetero carriers
   // 3. total carrier count used for centering the genotype
 
-  // unordered_map<int, pair<tuple<Eigen::VectorXd, boost::dynamic_bitset<>, int>, arg_real_t>> node_result_map;
   unordered_map<int, pair<tuple<Eigen::VectorXd, roaring::Roaring, int>, arg_real_t>> node_result_map;
   priority_queue<pair<arg_real_t, int>, vector<pair<arg_real_t, int>>,
                  std::greater<pair<arg_real_t, int>>>
@@ -4668,8 +4654,6 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
   stack<const ARGNode *> postorder;
 
   for (int i : arg.leaf_ids) {
-    // boost::dynamic_bitset<> hetero_carrier(arg.leaf_ids.size()/2);
-    // hetero_carrier.set(i/2, true);
     roaring::Roaring hetero_carrier;
     hetero_carrier.add(i/2);
     Eigen::VectorXd leaf_result = in_mat.row(i / 2) - pheno_mean.transpose();
@@ -4729,7 +4713,6 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
         }
       }
       Eigen::VectorXd node_result = Eigen::VectorXd::Zero(in_mat.cols());
-      // boost::dynamic_bitset<> node_het_carrier(arg.leaf_ids.size()/2);
       roaring::Roaring node_het_carrier;
       int node_desc_count = 0;
       for (const ARGEdge *child_edge : child_edges) {
@@ -4743,7 +4726,6 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
       expiration_pq.push(std::make_pair(expire_position, node->ID));
     }
     ac[mut_index] += std::get<2>(node_result_map.at(mutation->edge->child->ID).first);
-    // int total_het = std::get<1>(node_result_map.at(mutation->edge->child->ID).first).count();
     int total_het = std::get<1>(node_result_map.at(mutation->edge->child->ID).first).cardinality();
     arg_real_t xtx = total_het + 2.0*(ac[mut_index] - total_het) - 1.0*((ac[mut_index])*(ac[mut_index])) / (arg.leaf_ids.size()/2);
     beta.row(mut_index) += std::get<0>(node_result_map.at(mutation->edge->child->ID).first) / xtx;
@@ -4782,7 +4764,6 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
   // 2. bitset recording hetero carriers
   // 3. total carrier count used for centering the genotype
 
-  // unordered_map<int, pair<tuple<Eigen::VectorXd, boost::dynamic_bitset<>, int>, arg_real_t>> node_result_map;
   unordered_map<int, pair<pair<Eigen::VectorXd, int>, arg_real_t>> node_result_map;
   priority_queue<pair<arg_real_t, int>, vector<pair<arg_real_t, int>>,
                  std::greater<pair<arg_real_t, int>>>
@@ -4848,7 +4829,6 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
         }
       }
       Eigen::VectorXd node_result = Eigen::VectorXd::Zero(in_mat.cols());
-      // boost::dynamic_bitset<> node_het_carrier(arg.leaf_ids.size()/2);
       int node_desc_count = 0;
       for (const ARGEdge *child_edge : child_edges) {
         const ARGNode *child_node = child_edge->child;
