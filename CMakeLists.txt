@@ -79,6 +79,8 @@ FetchContent_GetProperties(roaring)
 # to avoid copying roaring include headers and other install files into built wheel.
 FetchContent_Populate(roaring)
 add_subdirectory(${roaring_SOURCE_DIR} ${roaring_BINARY_DIR} EXCLUDE_FROM_ALL)
+target_compile_options(roaring PRIVATE -Wno-deprecated-declarations)
+set_target_properties(roaring PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(src)
 add_subdirectory(example)
