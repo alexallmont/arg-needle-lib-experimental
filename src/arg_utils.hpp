@@ -28,7 +28,6 @@
 #include "arg_node.hpp"
 #include "arg_traversal.hpp"
 #include "descendant_list.hpp"
-#include "roaring/roaring.hh"
 #include "types.hpp"
 #include "utils.hpp"
 

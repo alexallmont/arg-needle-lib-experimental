@@ -59,6 +59,8 @@ from the root of this repository.
 #include <unordered_set>
 #include <vector>
 
+#include "roaring/roaring.hh"
+
 using std::cout;
 using std::deque;
 using std::endl;
