@@ -482,67 +482,71 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
   m.def("time_efficient_visit", &arg_utils::time_efficient_visit, py::arg("arg"),
         py::arg("timing") = false, "Time efficient visit routine");
 
-    // Functions for genotype mapping
-    m.def("map_genotype_to_ARG", &arg_utils::map_genotype_to_ARG, py::arg("arg"),
-          py::arg("genotype"), py::arg("pos"), "Maps a genotype to an ARG");
-    m.def("map_genotypes_to_ARG", &arg_utils::map_genotypes_to_ARG, py::arg("arg"),
-          py::arg("genotypes"), py::arg("positions"), py::arg("num_tasks") = std::nullopt, "Maps many genotype to an ARG");
-    m.def("map_genotype_to_ARG_diploid", &arg_utils::map_genotype_to_ARG_diploid, py::arg("arg"),
-          py::arg("genotype"), py::arg("site_id"), "Maps a diploid genotype to an ARG");
-    m.def("map_genotype_to_ARG_approximate",
-          [](ARG &arg, const std::vector<int> &genotype, arg_real_t pos) {
-              auto result = arg_utils::map_genotype_to_ARG_approximate(arg, genotype, pos);
-              std::vector<ARGEdge> edges;
-              for (const auto edge: std::get<0>(result)) {
-                  edges.push_back(*edge);
-              }
-              return py::make_tuple(edges, std::get<1>(result));
-          }, py::arg("arg"), py::arg("genotype"), py::arg("pos"),
-          "Maps a genotype to an ARG approximately, based on allele counts and frequencies.");
-    m.def("most_recent_common_ancestor",
-          [](ARG &arg, std::vector<int> descendants, double position) {
-              if (descendants.empty()) {
-                  throw std::runtime_error(THROW_LINE("Descendants list cannot be empty"));
-              }
-              DescendantList desc(arg.leaf_ids.size(), descendants.at(0));
-              for (int i = 1; i < descendants.size(); i++) {
-                  desc.set(descendants.at(i), true);
-              }
-              return arg_utils::most_recent_common_ancestor(arg, desc, position);
-          },
-          py::return_value_policy::reference, py::arg("arg"), py::arg("descendants"), py::arg("position"),
-          "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");
-    m.def("prepare_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"),
-    R"pbdoc(
+  // Functions for genotype mapping
+  m.def("map_genotype_to_ARG", &arg_utils::map_genotype_to_ARG, py::arg("arg"), py::arg("genotype"), py::arg("pos"),
+      "Maps a genotype to an ARG");
+  m.def("map_genotypes_to_ARG", &arg_utils::map_genotypes_to_ARG, py::arg("arg"), py::arg("genotypes"),
+      py::arg("positions"), py::arg("num_tasks") = std::nullopt, "Maps many genotype to an ARG");
+  m.def("map_genotype_to_ARG_diploid", &arg_utils::map_genotype_to_ARG_diploid, py::arg("arg"), py::arg("genotype"),
+      py::arg("site_id"), "Maps a diploid genotype to an ARG");
+  m.def(
+      "map_genotype_to_ARG_approximate",
+      [](ARG& arg, const std::vector<int>& genotype, arg_real_t pos) {
+        auto result = arg_utils::map_genotype_to_ARG_approximate(arg, genotype, pos);
+        std::vector<ARGEdge> edges;
+        for (const auto edge : std::get<0>(result)) {
+          edges.push_back(*edge);
+        }
+        return py::make_tuple(edges, std::get<1>(result));
+      },
+      py::arg("arg"), py::arg("genotype"), py::arg("pos"),
+      "Maps a genotype to an ARG approximately, based on allele counts and frequencies.");
+  m.def(
+      "most_recent_common_ancestor",
+      [](ARG& arg, std::vector<int> descendants, double position) {
+        if (descendants.empty()) {
+          throw std::runtime_error(THROW_LINE("Descendants list cannot be empty"));
+        }
+        DescendantList desc(arg.leaf_ids.size(), descendants.at(0));
+        for (int i = 1; i < descendants.size(); i++) {
+          desc.set(descendants.at(i), true);
+        }
+        return arg_utils::most_recent_common_ancestor(arg, desc, position);
+      },
+      py::return_value_policy::reference, py::arg("arg"), py::arg("descendants"), py::arg("position"),
+      "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");
+
+  m.def("prepare_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"),
+      R"pbdoc(
         Prepare ARG for fast matrix multiplication operations.
 
         Args:
             arg: ARG object to prepare for multiplication
     )pbdoc");
 
-m.def("ARG_by_matrix_multiply_muts", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
-    py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-    py::arg("start_pos") = 0, py::arg("end_pos") = std::numeric_limits<double>::infinity(),
-    R"pbdoc(
-        Multiply the genotype matrix on the ARG by a k-by-sample matrix.
+  m.def("ARG_by_matrix_multiply_muts", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
+      py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+      py::arg("start_pos") = 0, py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+      R"pbdoc(
+          Multiply the genotype matrix on the ARG by a k-by-sample matrix.
 
-        Args:
-            arg: ARG object containing mutations
-            matrix: k-by-sample numpy matrix to multiply with mutations
-            standardize: Whether to standardize mutations before multiplication (default: False)
-            alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
-            diploid: Whether to treat samples as diploid (default: False)
-            start_pos: Start position to consider mutations from (default: 0)
-            end_pos: End position to consider mutations to (default: infinity)
+          Args:
+              arg: ARG object containing mutations
+              matrix: k-by-sample numpy matrix to multiply with mutations
+              standardize: Whether to standardize mutations before multiplication (default: False)
+              alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
+              diploid: Whether to treat samples as diploid (default: False)
+              start_pos: Start position to consider mutations from (default: 0)
+              end_pos: End position to consider mutations to (default: infinity)
 
-        Returns:
-            A k-by-mutations matrix from multiplying the provided input with the genotype matrix
-    )pbdoc");
+          Returns:
+              A k-by-mutations matrix from multiplying the provided input with the genotype matrix
+      )pbdoc");
 
-m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing_mut_fast_mt, py::arg("arg"),
-    py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-    py::arg("n_threads") = 1,
-    R"pbdoc(
+  m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing_mut_fast_mt, py::arg("arg"),
+      py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+      py::arg("n_threads") = 1,
+      R"pbdoc(
         Multiply the genotype matrix on the ARG by a k-by-sample matrix using multiple threads.
 
         Args:
@@ -557,10 +561,10 @@ m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing
             A k-by-mutations matrix from multiplying the provided input with the genotype matrix
     )pbdoc");
 
-m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_fast, py::arg("arg"),
-    py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true,
-    py::arg("start_pos") = 0., py::arg("end_pos") = std::numeric_limits<double>::infinity(),
-    R"pbdoc(
+  m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_fast, py::arg("arg"),
+      py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true,
+      py::arg("start_pos") = 0., py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+      R"pbdoc(
         Multiply each sample by a mutations-by-k matrix.
 
         Args:
@@ -576,10 +580,10 @@ m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_
             A sample-by-k matrix from multiplying the genotype matrix with the provided input
     )pbdoc");
 
-m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_samples_fast_mt, py::arg("arg"),
-    py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-    py::arg("n_threads") = 1,
-    R"pbdoc(
+  m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_samples_fast_mt, py::arg("arg"),
+      py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
+      py::arg("n_threads") = 1,
+      R"pbdoc(
         Multiply each sample by a mutations-by-k matrix using multiple threads.
 
         Args:
