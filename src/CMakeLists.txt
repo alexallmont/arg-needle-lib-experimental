@@ -41,6 +41,7 @@ set(
         mutation.cpp
         random_utils.cpp
         root.cpp
+        serialize_arg.cpp
         site.cpp
         utils.cpp
 )
@@ -61,6 +62,7 @@ set(
         IntervalTree.h
         random_utils.hpp
         root.hpp
+        serialize_arg.hpp
         site.hpp
         types.hpp
         utils.hpp
