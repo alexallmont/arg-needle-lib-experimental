@@ -3945,7 +3945,7 @@ void prepare_fast_multiplication(ARG &arg) {
   if (arg.roots.empty()) {
     throw std::logic_error(THROW_LINE("Call populate_children_and_roots() first."));
   }
-  
+
   // required for traversal
   arg.populate_mutations_on_edges();
 
@@ -4128,7 +4128,7 @@ void prepare_fast_multiplication(ARG &arg) {
   
   std::cout << "loaded " << allele_freq.size() << " alleles" << std::endl;
   std::cout << "loaded " << pos_to_mut_id.size() << " sites" << std::endl;
-  
+
   return;
 }
 
@@ -4138,19 +4138,19 @@ void prepare_fast_multiplication(ARG &arg) {
 // mat: matrix to multiply
 // alpha: will mean center and multiply by std^alpha
 //
-// note that if start and end positions are specified, the full in_mat is still required. 
-// currently start_pos and end_pos should not be exposed in python api, 
-// as this is only used in multithreading in such a way to avoid splitting the matrix 
+// note that if start and end positions are specified, the full in_mat is still required.
+// currently start_pos and end_pos should not be exposed in python api,
+// as this is only used in multithreading in such a way to avoid splitting the matrix
 // and reindexing mutations unnecessarily
 Eigen::MatrixXd
 ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
                                  bool standardize_mut, arg_real_t alpha, bool diploid,
                                  arg_real_t start_pos, arg_real_t end_pos) {
-  
+
   size_t num_samples = arg.leaf_ids.size();
   unsigned int num_mutations = arg.num_mutations();
   unsigned int k = in_mat.cols();
-  auto in_mat_transposed = in_mat.transpose().eval(); 
+  auto in_mat_transposed = in_mat.transpose().eval();
   if (diploid) {
     assert(num_samples % 2 == 0);
     num_samples /= 2;
@@ -4176,7 +4176,7 @@ ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
     // no need to process nodes with no parents
     if (arg.arg_nodes.at(node_id)->parents.empty())
       continue;
-    
+
     auto &node_parents = arg.arg_nodes.at(node_id)->parents;
 
     // we restrict the split position to the start and end positions
@@ -4189,9 +4189,7 @@ ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
     auto first_split = splits.lower_bound(start_pos);
     // again go back by one to find a starting split no later than supplied start_pos.
     if (first_split != splits.begin()) first_split--;
-    
 
-    
     for (auto split_it = first_split; split_it != last_split; split_it++)
     {
       auto interval_left = *split_it;
@@ -4360,7 +4358,7 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eige
   // need to figure out how many mutations are in range and how to offset the allele count lookup
   int num_mut_in_range = 0;
   int site_lookup_offset = 0;
-  
+
   for (const auto& site_pos : arg.get_site_positions()) {
     if (site_pos < start_pos) site_lookup_offset++;
     if (site_pos >= start_pos && site_pos < end_pos) num_mut_in_range++;
@@ -4531,7 +4529,7 @@ Eigen::MatrixXd weighted_mut_squared_norm(const ARG& arg, const Eigen::MatrixXd&
   }
 
   int mut_index = 0;
-  
+
   for (const std::unique_ptr<Mutation> &mutation_unique_ptr :
        arg.get_mutations()) {
     const Mutation *mutation = mutation_unique_ptr.get();
@@ -4593,7 +4591,7 @@ Eigen::MatrixXd weighted_mut_squared_norm(const ARG& arg, const Eigen::MatrixXd&
     auto& het_carrier = node_result_map.at(mutation->edge->child->ID).first.second;
     if (centre) {
       double mean = (double) (is_carrier.cardinality()*2 - het_carrier.cardinality()) / (double) (arg.leaf_ids.size()/2);
-      
+
       squared_norms.row(mut_index) += sum_w * mean * mean;
       for (auto indv = is_carrier.begin(); indv != is_carrier.end(); indv++) {
         if (het_carrier.contains(*indv)) {
@@ -4665,7 +4663,7 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
   int n_muts_included = arg.num_mutations();
   int mut_index = 0;
   Eigen::VectorXd hetero_count = Eigen::VectorXd::Zero(n_muts_included);
-  
+
   for (const std::unique_ptr<Mutation> &mutation_unique_ptr :
        arg.get_mutations()) {
     const Mutation *mutation = mutation_unique_ptr.get();
@@ -4781,7 +4779,7 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
   int n_muts_included = arg.num_mutations();
   int mut_index = 0;
   Eigen::VectorXd hetero_count = Eigen::VectorXd::Zero(n_muts_included);
-  
+
   for (const std::unique_ptr<Mutation> &mutation_unique_ptr :
        arg.get_mutations()) {
     const Mutation *mutation = mutation_unique_ptr.get();

@@ -511,11 +511,11 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
               return arg_utils::most_recent_common_ancestor(arg, desc, position);
           },
           py::return_value_policy::reference, py::arg("arg"), py::arg("descendants"), py::arg("position"),
-          "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");          
+          "Finds the most recent common ancestor of a set of descendants in an ARG at a specific position.");
     m.def("prepare_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"),
     R"pbdoc(
         Prepare ARG for fast matrix multiplication operations.
-        
+
         Args:
             arg: ARG object to prepare for multiplication
     )pbdoc");
@@ -531,7 +531,7 @@ m.def("ARG_by_matrix_multiply_muts", &arg_utils::ARG_matrix_multiply_existing_mu
             matrix: k-by-sample numpy matrix to multiply with mutations
             standardize: Whether to standardize mutations before multiplication (default: False)
             alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
-            diploid: Whether to treat samples as diploid (default: False) 
+            diploid: Whether to treat samples as diploid (default: False)
             start_pos: Start position to consider mutations from (default: 0)
             end_pos: End position to consider mutations to (default: infinity)
 
@@ -584,7 +584,7 @@ m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_sampl
 
         Args:
             arg: ARG object containing samples
-            matrix: Mutations-by-k numpy matrix to multiply with samples  
+            matrix: Mutations-by-k numpy matrix to multiply with samples
             standardize: Whether to standardize mutations before multiplication (default: False)
             alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
             diploid: Whether to treat samples as diploid (default: False)
