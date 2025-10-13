@@ -66,18 +66,19 @@ include(FetchContent)
 FetchContent_Declare(
   roaring
   GIT_REPOSITORY https://github.com/RoaringBitmap/CRoaring.git
-  GIT_TAG v2.0.4
-  GIT_SHALLOW TRUE)
+  GIT_TAG v4.4.2
+  GIT_SHALLOW TRUE
+)
 
 set(ENABLE_ROARING_TESTS OFF CACHE INTERNAL "")
-
 set(ROARING_BUILD_STATIC ON CACHE INTERNAL "")
-FetchContent_MakeAvailable(roaring)
-
+set(ROARING_BUILD_LTO OFF CACHE INTERNAL "")
 FetchContent_GetProperties(roaring)
-SET(CPP_ROARING_HEADERS ${roaring_SOURCE_DIR}/cpp/roaring64map.hh  ${roaring_SOURCE_DIR}/cpp/roaring.hh)
-file(COPY  ${CPP_ROARING_HEADERS} DESTINATION ${roaring_SOURCE_DIR}/include/roaring)
 
+# Use FetchContent_Populate and add_subdirectory instead of FetchContent_MakeAvailable
+# to avoid copying roaring include headers and other install files into built wheel.
+FetchContent_Populate(roaring)
+add_subdirectory(${roaring_SOURCE_DIR} ${roaring_BINARY_DIR} EXCLUDE_FROM_ALL)
 
 add_subdirectory(src)
 add_subdirectory(example)

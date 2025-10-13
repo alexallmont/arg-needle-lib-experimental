@@ -79,7 +79,7 @@ set_target_properties(arg_needle_lib PROPERTIES PUBLIC_HEADER "${arg_needle_lib_
 
 target_link_libraries(arg_needle_lib PRIVATE Boost::headers Boost::iostreams Threads::Threads HDF5::HDF5)
 target_link_libraries(arg_needle_lib PUBLIC Eigen3::Eigen)
-target_link_libraries(arg_needle_lib PUBLIC roaring)
+target_link_libraries(arg_needle_lib PUBLIC roaring::roaring)
 
 # Turning off warnings for now
 # target_link_libraries(arg_needle_lib PRIVATE project_warnings)
@@ -88,7 +88,6 @@ target_link_libraries(arg_needle_lib PUBLIC roaring)
 target_include_directories(arg_needle_lib PUBLIC ${Boost_INCLUDE_DIRS})
 
 if (PYTHON_BINDINGS)
-    set_target_properties(arg_needle_lib PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
     pybind11_add_module(arg_needle_lib_pybind arg_needle_lib_pybind.cpp)
     target_link_libraries(arg_needle_lib_pybind PRIVATE arg_needle_lib)
     install(TARGETS arg_needle_lib_pybind LIBRARY DESTINATION .)
