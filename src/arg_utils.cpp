@@ -4125,9 +4125,6 @@ void prepare_fast_multiplication(ARG &arg) {
   data.pos_to_mut_id = pos_to_mut_id;
   data.node_id_to_split_points = node_id_to_split_points;
   arg.fast_multiplication_data = data;
-  
-  std::cout << "loaded " << allele_freq.size() << " alleles" << std::endl;
-  std::cout << "loaded " << pos_to_mut_id.size() << " sites" << std::endl;
 
   return;
 }
