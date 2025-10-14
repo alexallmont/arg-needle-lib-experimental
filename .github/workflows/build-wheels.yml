@@ -45,14 +45,14 @@ jobs:
             py-vers-full: cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*
             py-vers-pr: cp313-*
             before-all: brew install boost eigen hdf5
-            extra-env: CC="$(brew --prefix llvm@15)/bin/clang" CXX="$(brew --prefix llvm@15)/bin/clang++" HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
+            extra-env: CC=clang CXX=clang++
             mdt: 11
           - os: macos-15
             arch: arm64
             py-vers-full: cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*
             py-vers-pr: cp314-*
             before-all: brew install boost eigen hdf5
-            extra-env: CC="$(brew --prefix llvm@15)/bin/clang" CXX="$(brew --prefix llvm@15)/bin/clang++" HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
+            extra-env: CC=clang CXX=clang++
             mdt: 11
 
     env:
