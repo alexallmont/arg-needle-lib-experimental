@@ -17,8 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Visit example ARGs in various ways
-
 #include "arg.hpp"
 #include "arg_edge.hpp"
 #include "arg_node.hpp"
@@ -35,7 +33,6 @@
 #include <tuple>
 #include <chrono>
 
-
 using std::cout;
 using std::endl;
 using std::string;
@@ -44,14 +41,12 @@ using std::unordered_set;
 using std::vector;
 
 int main(int argc, char* argv[]) {
-
   // Read in the ARG from a file
-  std::string directory = ARG_NEEDLE_TESTDATA_DIR "/length_1e6_samples_1e3";
+  std::string directory = ARG_NEEDLE_TESTDATA_DIR "/length_1e6_samples_1e3/";
   ARG arg = arg_utils::arg_from_ts_files(directory + "nodes.txt", directory + "edges.txt");
   arg.populate_children_and_roots();
-  cout << arg.arg_nodes.size() << " nodes, " << arg.get_breakpoints().size() << " trees" << endl;
 
-  arg.populate_children_and_roots();
+  cout << arg.arg_nodes.size() << " nodes, " << arg.get_breakpoints().size() << " trees" << endl;
 
   arg_utils::generate_mutations(arg, 1e-10, 18);
 
