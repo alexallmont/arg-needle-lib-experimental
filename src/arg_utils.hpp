@@ -172,27 +172,26 @@ size_t write_bitsets(const ARG& arg, std::string file_root = "", bool diploid = 
 // writes all branches, which contain many bitset repeats
 void write_branches(const ARG& arg, std::string file_root);
 
-void prepare_fast_multiplication(ARG &arg);
+void prepare_fast_multiplication(ARG& arg);
 
-Eigen::MatrixXd
-ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& mat,
-                            bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true,
-                            arg_real_t start_pos = 0., arg_real_t end_pos = std::numeric_limits<arg_real_t>::infinity());
-Eigen::MatrixXd
-ARG_matrix_multiply_samples_fast_mt(const ARG& arg, const Eigen::MatrixXd& mat,
-                            bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true,
-                            int n_threads = 1);
+Eigen::MatrixXd ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& mat,
+    bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true, arg_real_t start_pos = 0.,
+    arg_real_t end_pos = std::numeric_limits<arg_real_t>::infinity());
+Eigen::MatrixXd ARG_matrix_multiply_samples_fast_mt(const ARG& arg, const Eigen::MatrixXd& mat,
+    bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true, int n_threads = 1);
 
-Eigen::MatrixXd
-ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
-                                 bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true, 
-                                 arg_real_t start_pos = 0., arg_real_t end_pos = std::numeric_limits<arg_real_t>::infinity());
+Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
+    bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true, arg_real_t start_pos = 0.,
+    arg_real_t end_pos = std::numeric_limits<arg_real_t>::infinity());
 Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast_mt(const ARG& arg, const Eigen::MatrixXd& in_mat,
     bool standardize_mut = false, arg_real_t alpha = -1., bool diploid = true, int n_threads = 1);
 
 Eigen::MatrixXd weighted_mut_squared_norm(const ARG& arg, const Eigen::MatrixXd& weights, bool centre = true);
-std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutation_fast(const ARG& arg, const Eigen::MatrixXd& in_mat);
-std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutation_fast_hwe(const ARG& arg, const Eigen::MatrixXd& in_mat);
+
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutation_fast(
+    const ARG& arg, const Eigen::MatrixXd& in_mat);
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutation_fast_hwe(
+    const ARG& arg, const Eigen::MatrixXd& in_mat);
 
 } // namespace arg_utils
 
