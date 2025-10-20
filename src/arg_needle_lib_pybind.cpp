@@ -531,9 +531,9 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
             arg: ARG object to prepare for multiplication
     )pbdoc");
 
-  m.def("ARG_by_matrix_multiply_muts", &arg_utils::ARG_matrix_multiply_existing_mut_fast, py::arg("arg"),
-      py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-      py::arg("start_pos") = 0, py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+  m.def("arg_matrix_multiply_muts", &arg_utils::arg_matrix_multiply_muts, py::arg("arg"), py::arg("matrix"),
+      py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false, py::arg("start_pos") = 0,
+      py::arg("end_pos") = std::numeric_limits<double>::infinity(),
       R"pbdoc(
           Multiply the genotype matrix on the ARG by a k-by-sample matrix.
 
@@ -550,9 +550,8 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
               A k-by-mutations matrix from multiplying the provided input with the genotype matrix
       )pbdoc");
 
-  m.def("ARG_by_matrix_multiply_muts_mt", &arg_utils::ARG_matrix_multiply_existing_mut_fast_mt, py::arg("arg"),
-      py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-      py::arg("n_threads") = 1,
+  m.def("arg_matrix_multiply_muts_mt", &arg_utils::arg_matrix_multiply_muts_mt, py::arg("arg"), py::arg("matrix"),
+      py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false, py::arg("n_threads") = 1,
       R"pbdoc(
         Multiply the genotype matrix on the ARG by a k-by-sample matrix using multiple threads.
 
@@ -568,9 +567,9 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
             A k-by-mutations matrix from multiplying the provided input with the genotype matrix
     )pbdoc");
 
-  m.def("ARG_by_matrix_multiply_samples", &arg_utils::ARG_matrix_multiply_samples_fast, py::arg("arg"),
-      py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true,
-      py::arg("start_pos") = 0., py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+  m.def("arg_matrix_multiply_samples", &arg_utils::arg_matrix_multiply_samples, py::arg("arg"), py::arg("matrix"),
+      py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true, py::arg("start_pos") = 0.,
+      py::arg("end_pos") = std::numeric_limits<double>::infinity(),
       R"pbdoc(
         Multiply each sample by a mutations-by-k matrix.
 
@@ -587,9 +586,8 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
             A sample-by-k matrix from multiplying the genotype matrix with the provided input
     )pbdoc");
 
-  m.def("ARG_by_matrix_multiply_samples_mt", &arg_utils::ARG_matrix_multiply_samples_fast_mt, py::arg("arg"),
-      py::arg("matrix"), py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false,
-      py::arg("n_threads") = 1,
+  m.def("arg_matrix_multiply_samples_mt", &arg_utils::matrix_multiply_samples_mt, py::arg("arg"), py::arg("matrix"),
+      py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false, py::arg("n_threads") = 1,
       R"pbdoc(
         Multiply each sample by a mutations-by-k matrix using multiple threads.
 

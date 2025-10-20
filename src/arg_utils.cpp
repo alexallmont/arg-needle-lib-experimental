@@ -4141,10 +4141,9 @@ void prepare_fast_multiplication(ARG &arg) {
 // currently start_pos and end_pos should not be exposed in python api,
 // as this is only used in multithreading in such a way to avoid splitting the matrix
 // and reindexing mutations unnecessarily
-Eigen::MatrixXd
-ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
-                                 bool standardize_mut, arg_real_t alpha, bool diploid,
-                                 arg_real_t start_pos, arg_real_t end_pos) {
+Eigen::MatrixXd arg_matrix_multiply_samples(const ARG& arg, const Eigen::MatrixXd& in_mat, bool standardize_mut,
+    arg_real_t alpha, bool diploid, arg_real_t start_pos, arg_real_t end_pos)
+{
 
   size_t num_samples = arg.leaf_ids.size();
   unsigned int num_mutations = arg.num_mutations();
@@ -4275,14 +4274,14 @@ ARG_matrix_multiply_samples_fast(const ARG& arg, const Eigen::MatrixXd& in_mat,
 // alpha: will mean center and multiply by std^alpha
 // this is a multi-threaded version that spawns threads calling the previous single-threaded function
 
-Eigen::MatrixXd ARG_matrix_multiply_samples_fast_mt(const ARG& arg, const Eigen::MatrixXd& mat,
-                            bool standardize_mut, arg_real_t alpha, bool diploid,
-                            int n_threads) {
+Eigen::MatrixXd matrix_multiply_samples_mt(
+    const ARG& arg, const Eigen::MatrixXd& mat, bool standardize_mut, arg_real_t alpha, bool diploid, int n_threads)
+{
 
   arg_real_t chunk_size = (arg.end - arg.start) / n_threads;
 
   if (arg.fast_multiplication_data.allele_frequencies.size() != arg.get_site_positions().size()) {
-      throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run prepare_fast_multiplication(arg)."));
+    throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run prepare_fast_multiplication(arg)."));
   }
 
   std::vector<std::future<Eigen::MatrixXd>> result_chunks;
@@ -4292,7 +4291,7 @@ Eigen::MatrixXd ARG_matrix_multiply_samples_fast_mt(const ARG& arg, const Eigen:
     assert(end_pos <= arg.end);
     result_chunks.push_back(
         std::async(std::launch::async,
-                   arg_utils::ARG_matrix_multiply_samples_fast,
+                   arg_utils::arg_matrix_multiply_samples,
                    std::cref(arg), std::cref(mat), standardize_mut, alpha, diploid,
                    start_pos, end_pos));
   }
@@ -4308,20 +4307,19 @@ Eigen::MatrixXd ARG_matrix_multiply_samples_fast_mt(const ARG& arg, const Eigen:
 
 // Multiply existing mutations in the ARG by a k x sample matrix (output is k x mutations)
 // uses visit mutations function but in a recursion
-Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eigen::MatrixXd& mat,
-                                                     bool standardize_mut, arg_real_t alpha,
-                                                     bool diploid, arg_real_t start_pos, arg_real_t end_pos) {
+Eigen::MatrixXd arg_matrix_multiply_muts(const ARG& arg, const Eigen::MatrixXd& mat, bool standardize_mut,
+    arg_real_t alpha, bool diploid, arg_real_t start_pos, arg_real_t end_pos)
+{
   size_t n = arg.leaf_ids.size();
   if (arg.fast_multiplication_data.allele_frequencies.size() != arg.get_site_positions().size()) {
-      throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run arg_needle_prepare_fast_multiplication(arg)."));
+    throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run arg_needle_prepare_fast_multiplication(arg)."));
   }
   if (diploid) {
     if (n != mat.cols() * 2) {
       cout << "Samples are " << n << " but vector size is 2 * " << mat.cols() << endl;
       throw std::runtime_error(THROW_LINE("Mismatching sample and vector sizes"));
     }
-  }
-  else {
+  } else {
     if (n != mat.cols()) {
       cout << "Samples are " << n << " but vector size is " << mat.cols() << endl;
       throw std::runtime_error(THROW_LINE("Mismatching sample and vector sizes"));
@@ -4471,9 +4469,9 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast(const ARG& arg, const Eige
 // Multiply existing mutations in the ARG by a k x sample matrix (output is k x mutations)
 // uses visit mutations function but in a recursion
 // this is a multi-threaded version that spawns threads calling the previous single-threaded function
-Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast_mt(const ARG& arg, const Eigen::MatrixXd& mat,
-                                                     bool standardize_mut, arg_real_t alpha,
-                                                     bool diploid, int n_threads) {
+Eigen::MatrixXd arg_matrix_multiply_muts_mt(
+    const ARG& arg, const Eigen::MatrixXd& mat, bool standardize_mut, arg_real_t alpha, bool diploid, int n_threads)
+{
 
   arg_real_t chunk_size = (arg.end - arg.start) / n_threads;
   std::vector<std::future<Eigen::MatrixXd>> result_chunks;
@@ -4482,7 +4480,7 @@ Eigen::MatrixXd ARG_matrix_multiply_existing_mut_fast_mt(const ARG& arg, const E
     auto end_pos = arg.start + ((i + 1) * chunk_size);
     result_chunks.push_back(
         std::async(std::launch::async,
-                   arg_utils::ARG_matrix_multiply_existing_mut_fast,
+                   arg_utils::arg_matrix_multiply_muts,
                    std::cref(arg), std::cref(mat), standardize_mut, alpha, diploid,
                    start_pos, end_pos));
   }
