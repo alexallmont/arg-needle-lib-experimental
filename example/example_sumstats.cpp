@@ -18,27 +18,10 @@
 */
 
 #include "arg.hpp"
-#include "arg_edge.hpp"
-#include "arg_node.hpp"
 #include "arg_utils.hpp"
-#include "descendant_list.hpp"
-#include "random_utils.hpp"
-#include "types.hpp"
-#include "utils.hpp"
 
-#include <cassert>
-#include <functional>
 #include <iostream>
 #include <string>
-#include <tuple>
-#include <chrono>
-
-using std::cout;
-using std::endl;
-using std::string;
-using std::tuple;
-using std::unordered_set;
-using std::vector;
 
 int main(int argc, char* argv[]) {
   // Read in the ARG from a file
@@ -46,11 +29,11 @@ int main(int argc, char* argv[]) {
   ARG arg = arg_utils::arg_from_ts_files(directory + "nodes.txt", directory + "edges.txt");
   arg.populate_children_and_roots();
 
-  cout << arg.arg_nodes.size() << " nodes, " << arg.get_breakpoints().size() << " trees" << endl;
+  std::cout << arg.arg_nodes.size() << " nodes, " << arg.get_breakpoints().size() << " trees" << std::endl;
 
   arg_utils::generate_mutations(arg, 1e-10, 18);
 
-  cout << "generated " << arg.num_mutations() << " mutations" << endl;
+  std::cout << "generated " << arg.num_mutations() << " mutations" << std::endl;
 
   arg_utils::prepare_fast_multiplication(arg);
 
