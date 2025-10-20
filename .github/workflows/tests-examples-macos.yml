@@ -55,3 +55,7 @@ jobs:
       - name: run example visit
         run: ./example/example_visit
         working-directory: build_dir
+
+      - name: run example sumstats
+        run: ./example/example_sumstats
+        working-directory: build_dir
