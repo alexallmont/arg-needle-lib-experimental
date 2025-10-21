@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 
   std::cout << "generated " << arg.num_mutations() << " mutations" << std::endl;
 
-  arg_utils::prepare_fast_multiplication(arg);
+  arg_utils::prepare_matmul(arg);
 
   Eigen::MatrixXd rand_pheno = Eigen::MatrixXd::Random(arg.leaf_ids.size()/2, 20);
 

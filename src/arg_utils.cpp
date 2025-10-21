@@ -3942,7 +3942,7 @@ void write_branches(const ARG& arg, string file_root) {
 
 // build necessary information for arg traversal for multiplication
 
-void prepare_fast_multiplication(ARG &arg) {
+void prepare_matmul(ARG &arg) {
 
   if (arg.roots.empty()) {
     throw std::logic_error(THROW_LINE("Call populate_children_and_roots() first."));
@@ -4158,7 +4158,7 @@ Eigen::MatrixXd arg_matrix_multiply_samples(const ARG& arg, const Eigen::MatrixX
     throw std::runtime_error(THROW_LINE("Mismatching mutations and matrix row sizes"));
   }
   if (arg.fast_multiplication_data.allele_frequencies.size() != arg.get_site_positions().size()) {
-      throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run prepare_fast_multiplication(arg)."));
+      throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run prepare_matmul(arg)."));
   }
   if (!diploid && standardize_mut) {
     throw std::runtime_error(
@@ -4274,14 +4274,14 @@ Eigen::MatrixXd arg_matrix_multiply_samples(const ARG& arg, const Eigen::MatrixX
 // alpha: will mean center and multiply by std^alpha
 // this is a multi-threaded version that spawns threads calling the previous single-threaded function
 
-Eigen::MatrixXd matrix_multiply_samples_mt(
+Eigen::MatrixXd arg_matrix_multiply_samples_mt(
     const ARG& arg, const Eigen::MatrixXd& mat, bool standardize_mut, arg_real_t alpha, bool diploid, int n_threads)
 {
 
   arg_real_t chunk_size = (arg.end - arg.start) / n_threads;
 
   if (arg.fast_multiplication_data.allele_frequencies.size() != arg.get_site_positions().size()) {
-    throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run prepare_fast_multiplication(arg)."));
+    throw std::runtime_error(THROW_LINE("Mismatching index data. Re-run prepare_matmul(arg)."));
   }
 
   std::vector<std::future<Eigen::MatrixXd>> result_chunks;

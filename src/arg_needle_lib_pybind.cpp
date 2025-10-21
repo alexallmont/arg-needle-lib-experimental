@@ -523,7 +523,7 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
   m.def("deserialize_arg", &arg_utils::deserialize_arg, py::arg("file_name"), py::arg("chunk_size") = 1000,
       py::arg("reserved_samples") = -1, "Deserialize ARG from HDF5 file.");
 
-  m.def("prepare_multiplication", &arg_utils::prepare_fast_multiplication, py::arg("arg"),
+  m.def("prepare_matmul", &arg_utils::prepare_matmul, py::arg("arg"),
       R"pbdoc(
         Prepare ARG for fast matrix multiplication operations.
 
@@ -531,75 +531,53 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
             arg: ARG object to prepare for multiplication
     )pbdoc");
 
-  m.def("arg_matrix_multiply_muts", &arg_utils::arg_matrix_multiply_muts, py::arg("arg"), py::arg("matrix"),
-      py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false, py::arg("start_pos") = 0,
-      py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+  m.def(
+      "arg_matmul",
+      [](const ARG& arg, const Eigen::MatrixXd& mat, std::string axis, bool standardize, arg_real_t alpha, bool diploid,
+          arg_real_t start_pos, arg_real_t end_pos, int n_threads) -> Eigen::MatrixXd {
+        // Validate axis
+        const bool axis_mutations = (axis == "mutations");
+        if (!axis_mutations) {
+          if (axis != "samples") {
+            throw std::runtime_error(THROW_LINE("arg_matmul only supports 'mutations' and 'samples' axis values"));
+          }
+        }
+
+        // Validate threads and delegate to appropriate mul method
+        if (n_threads > 1) {
+          if ((start_pos != 0) || (end_pos != std::numeric_limits<double>::infinity())) {
+            throw std::runtime_error(THROW_LINE("arg_matmul cannot specify start_pos or end_pos when running multithreaded"));
+          }
+          if (axis_mutations) {
+            return arg_utils::arg_matrix_multiply_muts_mt(arg, mat, standardize, alpha, diploid, n_threads);
+          } else {
+            return arg_utils::arg_matrix_multiply_samples_mt(arg, mat, standardize, alpha, diploid, n_threads);
+          }
+        } else {
+          if (axis_mutations) {
+            return arg_utils::arg_matrix_multiply_muts(arg, mat, standardize, alpha, diploid, start_pos, end_pos);
+          } else {
+            return arg_utils::arg_matrix_multiply_samples(arg, mat, standardize, alpha, diploid, start_pos, end_pos);
+          }
+        }
+      },
+      py::arg("arg"), py::arg("matrix"), py::arg("axis") = "mutations", py::arg("standardize") = false,
+      py::arg("alpha") = 0, py::arg("diploid") = false, py::arg("start_pos") = 0, py::arg("end_pos") = std::numeric_limits<double>::infinity(),
+      py::arg("n_threads") = 1,
       R"pbdoc(
           Multiply the genotype matrix on the ARG by a k-by-sample matrix.
 
           Args:
               arg: ARG object containing mutations
-              matrix: k-by-sample numpy matrix to multiply with mutations
-              standardize: Whether to standardize mutations before multiplication (default: False)
-              alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
-              diploid: Whether to treat samples as diploid (default: False)
-              start_pos: Start position to consider mutations from (default: 0)
-              end_pos: End position to consider mutations to (default: infinity)
-
+              matrix: k-by-sample numpy matrix to multiply
+              axis: specify whether matrix contains mutations or samples
+              standardize: whether to standardize mutations before multiplication (default: False)
+              alpha: standardize genotypes by multiplying std^alpha (default: 0)
+              diploid: whether to treat samples as diploid (default: False)
+              start_pos: start position to consider mutations from (default: 0)
+              end_pos: snd position to consider mutations to (default: infinity)
+              n_threads: split operation over multiple threads, does not support start_pos or end_pos (default: 1)
           Returns:
               A k-by-mutations matrix from multiplying the provided input with the genotype matrix
       )pbdoc");
-
-  m.def("arg_matrix_multiply_muts_mt", &arg_utils::arg_matrix_multiply_muts_mt, py::arg("arg"), py::arg("matrix"),
-      py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false, py::arg("n_threads") = 1,
-      R"pbdoc(
-        Multiply the genotype matrix on the ARG by a k-by-sample matrix using multiple threads.
-
-        Args:
-            arg: ARG object containing mutations
-            matrix: k-by-sample numpy matrix to multiply with mutations
-            standardize: Whether to standardize mutations before multiplication (default: False)
-            alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
-            diploid: Whether to treat samples as diploid (default: False)
-            n_threads: Number of threads to use (default: 1)
-
-        Returns:
-            A k-by-mutations matrix from multiplying the provided input with the genotype matrix
-    )pbdoc");
-
-  m.def("arg_matrix_multiply_samples", &arg_utils::arg_matrix_multiply_samples, py::arg("arg"), py::arg("matrix"),
-      py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = true, py::arg("start_pos") = 0.,
-      py::arg("end_pos") = std::numeric_limits<double>::infinity(),
-      R"pbdoc(
-        Multiply each sample by a mutations-by-k matrix.
-
-        Args:
-            arg: ARG object containing samples
-            matrix: Mutations-by-k numpy matrix to multiply with samples
-            standardize: Whether to standardize mutations before multiplication (default: False)
-            alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
-            diploid: Whether to treat samples as diploid (default: True)
-            start_pos: Start position to consider mutations from (default: 0)
-            end_pos: End position to consider mutations to (default: infinity)
-
-        Returns:
-            A sample-by-k matrix from multiplying the genotype matrix with the provided input
-    )pbdoc");
-
-  m.def("arg_matrix_multiply_samples_mt", &arg_utils::matrix_multiply_samples_mt, py::arg("arg"), py::arg("matrix"),
-      py::arg("standardize") = false, py::arg("alpha") = 0, py::arg("diploid") = false, py::arg("n_threads") = 1,
-      R"pbdoc(
-        Multiply each sample by a mutations-by-k matrix using multiple threads.
-
-        Args:
-            arg: ARG object containing samples
-            matrix: Mutations-by-k numpy matrix to multiply with samples
-            standardize: Whether to standardize mutations before multiplication (default: False)
-            alpha: Parameter to in standardizing genotypes by multiplying std^alpha (default: 0)
-            diploid: Whether to treat samples as diploid (default: False)
-            n_threads: Number of threads to use (default: 1)
-
-        Returns:
-            A sample-by-k matrix from multiplying the genotype matrix with the provided input
-    )pbdoc");
 }

@@ -1412,7 +1412,7 @@ void ARG::update_site_positions() const
 void ARG::keep_mutations_within_maf(arg_real_t min_maf, arg_real_t max_maf, bool verbose)
 {
   if (fast_multiplication_data.allele_frequencies.size() != this->num_mutations()) {
-    throw std::runtime_error(THROW_LINE("Mismatching allele freq data. Re-run prepare_fast_multiplication(arg)."));
+    throw std::runtime_error(THROW_LINE("Mismatching allele freq data. Re-run prepare_matmul(arg)."));
   }
   if (verbose) {
     std::cout << "Filtering " << this->num_mutations() << " mutations in maf range [" << min_maf << ", " << max_maf << "]\n";
