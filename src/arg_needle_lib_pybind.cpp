@@ -523,6 +523,28 @@ PYBIND11_MODULE(arg_needle_lib_pybind, m) {
   m.def("deserialize_arg", &arg_utils::deserialize_arg, py::arg("file_name"), py::arg("chunk_size") = 1000,
       py::arg("reserved_samples") = -1, "Deserialize ARG from HDF5 file.");
 
+  m.def("association_mutation", &arg_utils::association_mutation_fast, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference,
+        R"pbdoc(
+          Association testing using the mutations on the ARG with a linear model. Phenotypes and genotypes are mean-centred and normalised.
+
+          Args:
+              arg: ARG object containing mutations
+              in_mat: sample-by-k phenotype matrix
+          Returns:
+              A tuple of beta coefficients, their standard errors and alt allele counts.
+      )pbdoc");
+  m.def("association_mutation_hwe", &arg_utils::association_mutation_fast_hwe, py::arg("arg"), py::arg("in_mat"), py::return_value_policy::reference,
+      R"pbdoc(
+          Association testing using the mutations on the ARG with a linear model. Phenotypes are mean-centred and normalised, and genotypes are mean-centered
+          and normalised assuming Hardy-Weinberg equilibrium.
+
+          Args:
+              arg: ARG object containing mutations
+              in_mat: sample-by-k phenotype matrix
+          Returns:
+              A tuple of beta coefficients, their standard errors and alt allele counts.
+      )pbdoc");
+
   m.def("prepare_matmul", &arg_utils::prepare_matmul, py::arg("arg"),
       R"pbdoc(
         Prepare ARG for fast matrix multiplication operations.
