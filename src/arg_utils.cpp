@@ -4449,8 +4449,6 @@ Eigen::MatrixXd arg_matrix_multiply_muts(const ARG& arg, const Eigen::MatrixXd& 
       int node_descendant_count = arg.fast_multiplication_data.allele_frequencies[external_mut_id];
       arg_real_t mean = (arg_real_t)node_descendant_count / n;
       arg_real_t std = std::sqrt(2 * mean * (1 - mean));
-      // Eigen::VectorXd offset = 2 * mean * mat_row_sum;
-      // node_result = node_result - offset;
       node_result *= std::pow(std, alpha);
       result.col(external_mut_id - site_lookup_offset) += node_result;
     }
@@ -4835,7 +4833,6 @@ std::tuple<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::VectorXi> association_mutati
       expiration_pq.push(std::make_pair(expire_position, node->ID));
     }
     ac[mut_index] += node_result_map.at(mutation->edge->child->ID).first.second;
-    // int total_het = std::get<1>(node_result_map.at(mutation->edge->child->ID).first).count();
     arg_real_t xtx = ac[mut_index] + 1.0*((ac[mut_index])*(ac[mut_index])) / arg.leaf_ids.size();
     beta.row(mut_index) += std::get<0>(node_result_map.at(mutation->edge->child->ID).first) / xtx;
     Eigen::VectorXd numerator = pheno_ss - std::get<0>(node_result_map.at(mutation->edge->child->ID).first).cwiseAbs2() / xtx;
